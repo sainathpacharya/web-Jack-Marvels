@@ -46,7 +46,7 @@ function Results() {
     <div>
        <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-          Jack Marvel
+          Alpha Vlogs
         </h1>
         <div className="flex items-center gap-3">
     

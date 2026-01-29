@@ -41,7 +41,7 @@
 //     <div>
 
 //       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-//         <div className="text-2xl font-bold text-green-800">Jack Marvel</div>
+//         <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
 //         {/* <nav className="hidden md:flex space-x-6 text-sm">
 //           <a href="#" className="hover:text-green-700">Home</a>
 //           <a href="#" className="hover:text-green-700">About</a>
@@ -170,7 +170,7 @@ function Register() {
     };
 
     try {
-      const response = await fetch('http://3.254.64.117:8080/jack-marvels/api/registerUser', {
+      const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/registerUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ function Register() {
   return (
     <div>
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Jack Marvel</div>
+        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
         <button
           onClick={() => navigate('/')}
           className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"

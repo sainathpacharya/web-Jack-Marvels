@@ -78,7 +78,7 @@ const eventTitle = location.state?.title || "Featured Event Highlights";
   return (
     <div className="bg-green-100">
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Jack Marvel</div>
+        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
         {/* <nav className="hidden md:flex space-x-6 text-sm">
           <a href="#" className="hover:text-green-700">Home</a>
           <a href="#" className="hover:text-green-700">About</a>

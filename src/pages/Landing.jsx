@@ -23,7 +23,7 @@ export default function Landing() {
     "blogs": [],
     "vendors": [],
     "aboutus": "Interactive education platform empowering youth through events and learning.",
-    "contact": { "email": "support@jackmarvel.com", "Phone": "+91 98765 43210" },
+    "contact": { "email": "support@alphavlogs.com", "Phone": "+91 98765 43210" },
     "QuickLinks": { "events": "", "login": "", "Help": "" }
   })
 
@@ -139,7 +139,7 @@ export default function Landing() {
         }
       ],
       "aboutus": "Interactive education platform empowering youth through events and learning.",
-      "contact": { "email": "support@jackmarvel.com", "Phone": "+91 98765 43210" },
+      "contact": { "email": "support@alphavlogs.com", "Phone": "+91 98765 43210" },
       "QuickLinks": { "events": "", "login": "", "Help": "" }
     })
 
@@ -167,7 +167,7 @@ export default function Landing() {
     };
 
     try {
-      const response = await fetch('http://3.254.64.117:8080/jack-marvels/api/authenticateUser', {
+      const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/authenticateUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +193,7 @@ export default function Landing() {
   return (
     <div className="font-sans text-gray-800">
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Jack Marvel</div>
+        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
         {/* <nav className="hidden md:flex space-x-6 text-sm">
             <a href="#" className="hover:text-green-700">Home</a>
             <a href="#" className="hover:text-green-700">About</a>
@@ -458,7 +458,7 @@ export default function Landing() {
           </div>
           <div>
             <h4 className="text-lg font-bold mb-2">Contact</h4>
-            <p>Email: support@jackmarvel.com</p>
+            <p>Email: support@alphavlogs.com</p>
             <p>Phone: +91 98765 43210</p>
           </div>
           <div>
@@ -471,7 +471,7 @@ export default function Landing() {
           </div>
         </div>
         <div className="text-center text-xs text-gray-400 mt-10">
-          © 2025 Jack Marvel. All rights reserved.
+          © 2025 Alpha Vlogs. All rights reserved.
         </div>
       </footer>
       {/* Login Modal */}
