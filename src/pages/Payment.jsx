@@ -1,8 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
+const PROMOTER_PROMO_CODES_KEY = 'promoterPromoCodes';
+const DEMO_PROMOTER_PROMO = { 1: { code: 'PROMO1', discount: '20%' } };
+
 function Payment() {
+  const navigate = useNavigate();
   const [selectedMethod, setSelectedMethod] = useState('card');
+  const [promoterSchools, setPromoterSchools] = useState([]);
+  const [promoterPromoCodes, setPromoterPromoCodes] = useState({});
+  const [selectedSchoolId, setSelectedSchoolId] = useState('');
+  const [studentPaymentAmount] = useState(199);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROMOTER_SCHOOLS_KEY);
+      setPromoterSchools(raw ? JSON.parse(raw) : []);
+      const promoRaw = localStorage.getItem(PROMOTER_PROMO_CODES_KEY);
+      setPromoterPromoCodes({ ...DEMO_PROMOTER_PROMO, ...(promoRaw ? JSON.parse(promoRaw) : {}) });
+    } catch (_) {}
+  }, []);
+
+  const selectedSchool = promoterSchools.find((s) => String(s.id) === String(selectedSchoolId));
+  const promoterPromo = selectedSchool?.addedByPromoterId != null ? promoterPromoCodes[selectedSchool.addedByPromoterId] : null;
+  const discountPercent = promoterPromo ? parseInt(promoterPromo.discount || '0', 10) : 0;
+  const discountedAmount = promoterPromo ? Math.round(studentPaymentAmount * (1 - discountPercent / 100)) : studentPaymentAmount;
+
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     navigate('/');
@@ -29,6 +54,42 @@ function Payment() {
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-green-100 animate-pulse-slow z-0" />
 
       <div className="relative z-10 p-6 pt-24">
+        {/* Admin: Pay for students — promoter's discount applies for schools added by promoter */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-3xl mx-auto mb-8 bg-white p-6 rounded-2xl shadow-lg border border-green-100"
+        >
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Pay for students (School)</h2>
+          <p className="text-sm text-gray-600 mb-4">Select school. If the school was added by a promoter, that promoter&apos;s discount is applied by default.</p>
+          <label className="block mb-2">
+            <span className="font-medium text-gray-700">Select school</span>
+            <select
+              value={selectedSchoolId}
+              onChange={(e) => setSelectedSchoolId(e.target.value)}
+              className="w-full mt-1 p-3 border border-gray-300 rounded-lg bg-white"
+            >
+              <option value="">— Select school —</option>
+              {promoterSchools.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.branchCode ? ` (${s.branchCode})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedSchool && promoterPromo && (
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <p className="text-green-800 font-medium">Promoter discount applied by default</p>
+              <p className="text-sm text-green-700 mt-1">Code: <strong>{promoterPromo.code}</strong> — {promoterPromo.discount} off (school added by promoter)</p>
+              <p className="text-sm text-gray-700 mt-2">Amount: ₹{studentPaymentAmount} → <strong>₹{discountedAmount}</strong></p>
+            </div>
+          )}
+          {selectedSchool && !promoterPromo && (
+            <p className="mt-2 text-sm text-gray-500">No promoter discount for this school.</p>
+          )}
+        </motion.div>
+
         {/* Selected Plan Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

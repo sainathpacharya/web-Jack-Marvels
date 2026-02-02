@@ -147,41 +147,61 @@ export default function Landing() {
   })
 
 
+  // Demo credentials — same as Login page; skip API when used
+  const DEMO_CREDENTIALS = { username: 'admin@demo.com', password: 'Admin123!' };
+  const [loginRole, setLoginRole] = useState('admin');
+
+  const getDashboardPath = (userRole) => {
+    switch (userRole) {
+      case 'super_admin': return '/super-admin';
+      case 'admin': return '/admin';
+      case 'promoter': return '/promoter';
+      default: return '/home';
+    }
+  };
+
   const handleLogin = async () => {
     if (!username || !password) {
       alert('Please enter both username and password.');
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(username.trim())) {
       alert('Please enter a valid email address as the username.');
       return;
     }
 
+    // Demo login: skip API and go to dashboard by selected role
+    const isDemoLogin =
+      username.trim().toLowerCase() === DEMO_CREDENTIALS.username.toLowerCase() &&
+      password === DEMO_CREDENTIALS.password;
+    if (isDemoLogin) {
+      setShowModal(false);
+      alert('Login successful! (Demo)');
+      const currentUser = { username: username.trim(), role: loginRole };
+      if (loginRole === 'promoter') currentUser.promoterId = 1;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      navigate(getDashboardPath(loginRole));
+      return;
+    }
 
-
-    const payload = {
-      username: username.trim(),
-      password: password,
-    };
+    const payload = { username: username.trim(), password };
 
     try {
       const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/authenticateUser', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       const result = await response.json();
-
       if (result.statusCode === 200) {
-        alert(result?.response);
-        // alert("login successful")
-        localStorage.setItem('currentUser', JSON.stringify({ username }));
-        navigate('/home');
+        setShowModal(false);
+        alert(result?.response || 'Login successful!');
+        const userRole = result.role || loginRole;
+        const currentUser = { username: username.trim(), role: userRole };
+        if (userRole === 'promoter') currentUser.promoterId = result.promoterId ?? 1;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        navigate(getDashboardPath(userRole));
       } else {
         alert(result.message || 'Invalid username or password!');
       }
@@ -503,8 +523,21 @@ export default function Landing() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full p-3 mb-4 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="w-full p-3 mb-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
               />
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Login as</label>
+                <select
+                  value={loginRole}
+                  onChange={(e) => setLoginRole(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+                >
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                  <option value="promoter">Promoter</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
               <button onClick={handleLogin} className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded">
 
                 Login

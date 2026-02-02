@@ -168,6 +168,13 @@ const Home = () => {
           </button>
         </div>
       </header>
+      {/* Student Dashboard heading */}
+      <div className="px-6 md:px-20 pt-4">
+        <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
+          <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">◉</span>
+          Dashboard
+        </h2>
+      </div>
       {/* Menu Buttons */}
       {dashBoardDetails.Results.length > 0 && <section className="mt-16 mb-20 px-4">
         <div className="text-center mb-10">

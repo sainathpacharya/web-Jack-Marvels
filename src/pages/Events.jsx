@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const eventVideos = [
   {
@@ -66,9 +66,11 @@ const eventVideos = [
 ];
 
 export default function Events() {
-  const location = useLocation();
-const eventTitle = location.state?.title || "Featured Event Highlights";
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const eventTitle = id ? String(id).charAt(0).toUpperCase() + String(id).slice(1) : 'Featured Event Highlights';
   const [selected, setSelected] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
@@ -86,7 +88,7 @@ const eventTitle = location.state?.title || "Featured Event Highlights";
           <a href="#" className="hover:text-green-700">Contact</a>
         </nav> */}
         <button
-          onClick={() => { handleLogout}}
+          onClick={handleLogout}
           className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
         >
           Logout
@@ -94,10 +96,16 @@ const eventTitle = location.state?.title || "Featured Event Highlights";
       </header>
       
       <section className="pt-4 pb-10 px-4 md:px-8 max-w-6xl mx-auto">
-          <div className="text-center mb-6">
+          <div className="text-center mb-6 flex flex-col sm:flex-row items-center justify-center gap-4">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-700 inline-block border-b-4 border-blue-200 pb-1">
-              {"Dance"}
+              {eventTitle}
             </h2>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 text-sm font-medium"
+            >
+              Upload Video
+            </button>
           </div>
           <div className="max-w-6xl mx-auto px-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
@@ -157,20 +165,40 @@ const eventTitle = location.state?.title || "Featured Event Highlights";
                 </div>
                 <div className="p-6">
                   <h3 className="text-2xl font-bold mb-2">{selected.title}</h3>
-                  <button
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700"
-                    onClick={() => setSelected(null)}
-                  >
-                    Close
-                  </button>
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      className="px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700"
+                      onClick={() => setShowUploadModal(true)}
+                    >
+                      Upload Video
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300"
+                      onClick={() => setSelected(null)}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Upload Video modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Video</h3>
+              <p className="text-gray-600 text-sm mb-4">Upload your performance video for this event.</p>
+              <input type="file" accept="video/*" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700" />
+              <div className="flex gap-3 mt-4">
+                <button onClick={() => setShowUploadModal(false)} className="flex-1 py-2 border border-gray-300 rounded-lg">Cancel</button>
+                <button onClick={() => { setShowUploadModal(false); alert('Upload started (demo).'); }} className="flex-1 py-2 bg-blue-600 text-white rounded-lg">Upload</button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
-
-     
   );
 }
