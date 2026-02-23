@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import landingPageHero from '../assets/images/landingPageHero.png'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player } from '@lottiefiles/react-lottie-player';
@@ -487,6 +487,7 @@ export default function Landing() {
               <li><a href="#" className="hover:underline">Events</a></li>
               <li><a href="#" className="hover:underline">Login</a></li>
               <li><a href="#" className="hover:underline">Help</a></li>
+              <li><Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>

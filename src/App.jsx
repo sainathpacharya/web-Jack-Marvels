@@ -13,10 +13,14 @@ import QuizCreator from './pages/QuizCreator';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PromoterDashboard from './pages/PromoterDashboard';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+
+// Basename for React Router (no trailing slash). Required for GitHub Pages subpath.
+const basename = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
 
 function App() {
   return (
-    <Router>
+    <Router basename={basename}>
       <div className="bg-green-100 shadow">
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -31,6 +35,7 @@ function App() {
           <Route path="/payment" element={<Payment />} />
           <Route path="/results" element={<Results />} />
           <Route path="/QuizCreator" element={<QuizCreator />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         </Routes>
       </div>
     </Router>
