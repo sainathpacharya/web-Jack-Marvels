@@ -30,6 +30,27 @@ The project is set up to deploy to **GitHub Pages** via GitHub Actions.
 
 If your default branch is `master` instead of `main`, edit `.github/workflows/deploy-pages.yml` and change `branches: [main]` to `branches: [master]`.
 
+### Troubleshooting: "404 – There isn't a GitHub Pages site here"
+
+This means no site has been published yet. Do this:
+
+1. **Enable GitHub Actions as the source**
+   - Open: **https://github.com/sainathpacharya/web-Jack-Marvels/settings/pages**
+   - Under **Build and deployment**, set **Source** to **GitHub Actions** (not "Deploy from a branch").
+   - Save.
+
+2. **Run the deploy workflow**
+   - Open: **https://github.com/sainathpacharya/web-Jack-Marvels/actions**
+   - Click **Deploy to GitHub Pages** in the left sidebar.
+   - Click **Run workflow** (dropdown) → **Run workflow**.
+   - Wait for the run to finish (green check). The first run may take 1–2 minutes.
+
+3. **Open the site**
+   - After a successful run, the site is at:
+     - **https://sainathpacharya.github.io/web-Jack-Marvels/**
+     - **https://sainathpacharya.github.io/web-Jack-Marvels/privacy-policy**
+   - If it still 404s, wait a minute and refresh (Pages can take a short time to update).
+
 ---
 
 ## SPA routing (no broken refresh)
