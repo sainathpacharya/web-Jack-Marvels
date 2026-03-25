@@ -1,0 +1,81 @@
+[
+  {
+    "id": "singing",
+    "name": "Singing",
+    "path": "/events/singing",
+    "gifUrl": "https://media.giphy.com/media/3o6Zt481isNVuQI1l6/giphy.gif"
+  },
+  {
+    "id": "dancing",
+    "name": "Dancing",
+    "path": "/events/dancing",
+    "gifUrl": "https://media.giphy.com/media/l0HlBOkgZRl6Qp5F6/giphy.gif"
+  },
+  {
+    "id": "painting",
+    "name": "Painting",
+    "path": "/events/painting",
+    "gifUrl": "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif"
+  },
+  {
+    "id": "quiz",
+    "name": "Quiz",
+    "path": "/events/quiz",
+    "gifUrl": "https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif"
+  },
+  {
+    "id": "poetry",
+    "name": "Poetry",
+    "path": "/events/poetry",
+    "gifUrl": "https://media.giphy.com/media/26u4cqiYbUzhXQ9oQ/giphy.gif"
+  },
+  {
+    "id": "debate",
+    "name": "Debate",
+    "path": "/events/debate",
+    "gifUrl": "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif"
+  },
+  {
+    "id": "crafting",
+    "name": "Crafting",
+    "path": "/events/crafting",
+    "gifUrl": "https://media.giphy.com/media/3o7WIPcfT3kK7vKQ4Q/giphy.gif"
+  },
+  {
+    "id": "drama",
+    "name": "Drama",
+    "path": "/events/drama",
+    "gifUrl": "https://media.giphy.com/media/26xBPjvHh9wqZ8dJ6/giphy.gif"
+  },
+  {
+    "id": "movie-dialogues",
+    "name": "Movie Dialogues",
+    "path": "/events/movie-dialogues",
+    "gifUrl": "https://media.giphy.com/media/3o6Zt3KzK4m3yT1Q4I/giphy.gif"
+  },
+  {
+    "id": "science-fair",
+    "name": "Science Fair",
+    "path": "/events/science",
+    "gifUrl": "https://media.giphy.com/media/26xBwdIuJky5b6lDW/giphy.gif"
+  },
+  {
+    "id": "special-talent",
+    "name": "Special Talent",
+    "path": "/events/special-talent",
+    "gifUrl": "https://media.giphy.com/media/3o7abKhOpu0NwenHcA/giphy.gif"
+  },
+  {
+    "id": "twins-act",
+    "name": "Twins Act",
+    "path": "/events/twins-act",
+    "gifUrl": "https://media.giphy.com/media/3o6Zt6KHxJ3x0V5qB2/giphy.gif"
+  },
+  {
+    "id": "tongue-twister",
+    "name": "Tongue Twister",
+    "path": "/events/tongue-twister",
+    "gifUrl": "https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif"
+  }
+]
+

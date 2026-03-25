@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Player } from '@lottiefiles/react-lottie-player';
 import heroSectionAnimation from '../animations/heroSectionAnimation.json'
 import singingAnimation from '../animations/singingAnimatinon.json'
+import { login as apiLogin } from '../api/auth';
+import { setSession } from '../auth/session';
+import landingFeaturedEvents from '../data/landingFeaturedEvents.json';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -30,46 +33,13 @@ export default function Landing() {
   useEffect(() => {
     // need to make an API cal
     setLandingPageDetails({
-      "statistics": ['3600+ Students', '980+ Teachers', '40+ Events'],
+      "statistics": ['40+ Schools', '3600+ Students'],
       "actions": [
         { title: 'Safety & Security' },
         { title: 'Cultural Activities' },
         { title: 'Creative Environment' },
       ],
-      "events": [
-        {
-          title: "Singing Competition",
-          desc: "Showcase your vocal talent and wow the audience!",
-          videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-          winner: "Ananya Sharma",
-          school: "Green Valley High",
-          winnerDesc: "Ananya impressed everyone with her powerful classical rendition."
-        },
-        {
-          title: "Dancing Showdown",
-          desc: "Express yourself through dance with freestyle or classical.",
-          videoUrl: "https://www.w3schools.com/html/movie.mp4",
-          winner: "Rohan Mehta",
-          school: "Sunrise Public School",
-          winnerDesc: "Rohan’s freestyle dance amazed the judges with energy and creativity."
-        },
-        {
-          title: "Drawing & Painting",
-          desc: "Bring colors to life with your creative sketches.",
-          videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-          winner: "Sneha Roy",
-          school: "Blue Ridge Academy",
-          winnerDesc: "Sneha created a stunning nature-themed artwork full of detail and color."
-        },
-        {
-          title: "Running Race",
-          desc: "Race to the finish and feel the thrill of victory!",
-          videoUrl: "https://www.w3schools.com/html/movie.mp4",
-          winner: "Aryan Verma",
-          school: "Harmony Kinderhaus",
-          winnerDesc: "Aryan won with a blazing sprint finish, cheered by all."
-        }
-      ],
+      "events": landingFeaturedEvents,
       "blogs": [
         {
           title: "The Art of Singing",
@@ -147,16 +117,15 @@ export default function Landing() {
   })
 
 
-  // Demo credentials — same as Login page; skip API when used
-  const DEMO_CREDENTIALS = { username: 'admin@demo.com', password: 'Admin123!' };
-  const [loginRole, setLoginRole] = useState('admin');
-
-  const getDashboardPath = (userRole) => {
-    switch (userRole) {
-      case 'super_admin': return '/super-admin';
-      case 'admin': return '/admin';
-      case 'promoter': return '/promoter';
-      default: return '/home';
+  const getDashboardPath = (roleId) => {
+    // Routing is controlled ONLY by roleId.
+    const id = roleId == null ? null : Number(roleId);
+    switch (id) {
+      case 1:
+        return '/home';
+      default:
+        // TODO: add future roleId routing here.
+        return '/home';
     }
   };
 
@@ -165,55 +134,56 @@ export default function Landing() {
       alert('Please enter both username and password.');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(username.trim())) {
-      alert('Please enter a valid email address as the username.');
-      return;
-    }
-
-    // Demo login: skip API and go to dashboard by selected role
-    const isDemoLogin =
-      username.trim().toLowerCase() === DEMO_CREDENTIALS.username.toLowerCase() &&
-      password === DEMO_CREDENTIALS.password;
-    if (isDemoLogin) {
-      setShowModal(false);
-      alert('Login successful! (Demo)');
-      const currentUser = { username: username.trim(), role: loginRole };
-      if (loginRole === 'promoter') currentUser.promoterId = 1;
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      navigate(getDashboardPath(loginRole));
-      return;
-    }
-
-    const payload = { username: username.trim(), password };
 
     try {
-      const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/authenticateUser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (result.statusCode === 200) {
-        setShowModal(false);
-        alert(result?.response || 'Login successful!');
-        const userRole = result.role || loginRole;
-        const currentUser = { username: username.trim(), role: userRole };
-        if (userRole === 'promoter') currentUser.promoterId = result.promoterId ?? 1;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        navigate(getDashboardPath(userRole));
-      } else {
-        alert(result.message || 'Invalid username or password!');
-      }
+      const auth = await apiLogin({ username: username.trim(), password });
+      const user = auth?.me ?? auth?.user ?? auth?.profile ?? auth;
+
+      // Try common token field names (backend response uses ResponseDTO wrapper).
+      const accessToken =
+        auth?.accessToken ??
+        auth?.token ??
+        auth?.access_token ??
+        user?.accessToken ??
+        user?.token ??
+        user?.access_token ??
+        '';
+      const refreshToken =
+        auth?.refreshToken ??
+        auth?.refresh_token ??
+        user?.refreshToken ??
+        user?.refresh_token ??
+        '';
+
+      // Store user for Home page / role-based rendering.
+      const userForStorage = { ...user, role: user?.roleName };
+      localStorage.setItem('user', JSON.stringify(userForStorage));
+
+      setSession({ accessToken, refreshToken, me: userForStorage });
+      setShowModal(false);
+      alert('Login successful!');
+      navigate(getDashboardPath(userForStorage?.roleId));
     } catch (error) {
       console.error('Login error:', error);
-      alert('Something went wrong. Please try again later.');
+      alert(error?.message || 'Something went wrong. Please try again later.');
     }
   };
   return (
     <div className="font-sans text-gray-800">
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <div className="text-xl font-bold text-green-800">Alpha Vlogs</div>
+        </button>
         {/* <nav className="hidden md:flex space-x-6 text-sm">
             <a href="#" className="hover:text-green-700">Home</a>
             <a href="#" className="hover:text-green-700">About</a>
@@ -273,7 +243,7 @@ export default function Landing() {
       </section>
 
       {/* Stats */}
-      {landingPageDetails.statistics.length > 0 && <section className="bg-white py-10 px-6 md:px-20 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+      {landingPageDetails.statistics.length > 0 && <section className="bg-white py-10 px-6 md:px-20 grid grid-cols-1 sm:grid-cols-2 gap-6 text-center">
         {landingPageDetails.statistics.map((item, idx) => (
           <motion.div
             key={idx}
@@ -526,19 +496,6 @@ export default function Landing() {
                 placeholder="Password"
                 className="w-full p-3 mb-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
               />
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Login as</label>
-                <select
-                  value={loginRole}
-                  onChange={(e) => setLoginRole(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-                >
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
-                  <option value="promoter">Promoter</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
-              </div>
               <button onClick={handleLogin} className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded">
 
                 Login

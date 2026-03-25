@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearSession } from '../auth/session';
 import {
   STATIC_SCHOOLS,
   STATIC_PROMOTERS,
@@ -20,9 +21,43 @@ const SIDEBAR_ITEMS = [
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [schools, setSchools] = useState([...STATIC_SCHOOLS]);
   const [promoters, setPromoters] = useState([...STATIC_PROMOTERS]);
   const [sponsors, setSponsors] = useState([...STATIC_SPONSORS]);
+
+  const SCHOOLS_PAGE_SIZE = 10;
+  const [schoolsPage, setSchoolsPage] = useState(1);
+  const schoolsTotalPages = Math.max(1, Math.ceil(schools.length / SCHOOLS_PAGE_SIZE));
+  const schoolsStartIndex = (schoolsPage - 1) * SCHOOLS_PAGE_SIZE;
+  const pagedSchools = schools.slice(schoolsStartIndex, schoolsStartIndex + SCHOOLS_PAGE_SIZE);
+
+  const PROMOTERS_PAGE_SIZE = 10;
+  const [promotersPage, setPromotersPage] = useState(1);
+  const promotersTotalPages = Math.max(1, Math.ceil(promoters.length / PROMOTERS_PAGE_SIZE));
+  const promotersStartIndex = (promotersPage - 1) * PROMOTERS_PAGE_SIZE;
+  const pagedPromoters = promoters.slice(
+    promotersStartIndex,
+    promotersStartIndex + PROMOTERS_PAGE_SIZE
+  );
+
+  const twoLineEllipsisStyle = {
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  };
+
+  useEffect(() => {
+    setSchoolsPage((p) => Math.min(p, Math.max(1, Math.ceil(schools.length / SCHOOLS_PAGE_SIZE))));
+  }, [schools.length]);
+
+  useEffect(() => {
+    setPromotersPage((p) =>
+      Math.min(p, Math.max(1, Math.ceil(promoters.length / PROMOTERS_PAGE_SIZE)))
+    );
+  }, [promoters.length]);
+
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [showAddPromoter, setShowAddPromoter] = useState(false);
   const [showAddSponsor, setShowAddSponsor] = useState(false);
@@ -33,6 +68,8 @@ export default function SuperAdminDashboard() {
     email: '',
     mobile: '',
     photo: null,
+    instagramProfileLink: '',
+    youtubeProfileLink: '',
     referralCode: '',
     address: '',
     city: '',
@@ -48,7 +85,7 @@ export default function SuperAdminDashboard() {
   const [promoCodes, setPromoCodes] = useState([...STATIC_PROMO_CODES]);
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    clearSession();
     navigate('/');
   };
 
@@ -77,6 +114,8 @@ export default function SuperAdminDashboard() {
       email: '',
       mobile: '',
       photo: null,
+      instagramProfileLink: '',
+      youtubeProfileLink: '',
       referralCode: '',
       address: '',
       city: '',
@@ -179,7 +218,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 shadow-sm flex flex-col">
+      <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
         <div className="p-5 border-b border-gray-100">
           <span className="text-2xl font-bold text-indigo-700">Aluer.</span>
         </div>
@@ -208,9 +247,88 @@ export default function SuperAdminDashboard() {
         </div>
       </aside>
 
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-5 border-b border-gray-100">
+          <span className="text-2xl font-bold text-indigo-700">Aluer.</span>
+        </div>
+        <nav className="flex-1 p-3 space-y-1">
+          {SIDEBAR_ITEMS.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => {
+                setActiveNav(item.path);
+                setSidebarOpen(false);
+              }}
+              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
+                activeNav === item.path
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="p-3 border-t border-gray-100">
+          <button
+            onClick={() => {
+              setSidebarOpen(false);
+              handleLogout();
+            }}
+            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
+      </aside>
+
       {/* Main */}
-      <main className="flex-1 p-8 overflow-auto">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
+      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
+        <div className="md:hidden flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg border border-gray-200 bg-white"
+            aria-label="Open navigation"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="w-5 h-5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4 6h16" />
+              <path d="M4 12h16" />
+              <path d="M4 18h16" />
+            </svg>
+          </button>
+          <div className="text-lg font-bold text-gray-800">
+            {activeNav === 'dashboard' && 'SUPER ADMIN'}
+            {activeNav === 'schools' && 'SCHOOLS'}
+            {activeNav === 'promoters' && 'PROMOTERS'}
+            {activeNav === 'sponsors' && 'SPONSORS'}
+            {activeNav === 'video-bytes' && 'VIDEO BYTES'}
+            {activeNav === 'promo-codes' && 'PROMO CODES'}
+          </div>
+          <div />
+        </div>
+
+        <h1 className="hidden md:block text-2xl font-bold text-gray-800 mb-6">
           {activeNav === 'dashboard' && 'SUPER ADMIN DASHBOARD'}
           {activeNav === 'schools' && 'Schools'}
           {activeNav === 'promoters' && 'Promoters'}
@@ -253,21 +371,72 @@ export default function SuperAdminDashboard() {
         )}
 
         {activeNav === 'schools' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
-            {schools.map((s) => (
-              <div key={s.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
-                <span className="text-gray-700">{s.name}</span>
-                <span className="text-gray-400">→</span>
-              </div>
-            ))}
+          <>
+          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">School Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schools.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-5 py-8 text-gray-500">
+                        No schools added yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedSchools.map((s, idx) => (
+                      <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="px-5 py-4 whitespace-nowrap">{schoolsStartIndex + idx + 1}</td>
+                        <td className="px-5 py-4">
+                          <span style={twoLineEllipsisStyle} className="font-medium text-gray-800">
+                            {s.name}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {schools.length > SCHOOLS_PAGE_SIZE && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setSchoolsPage((p) => Math.max(1, p - 1))}
+                disabled={schoolsPage <= 1}
+                className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <div className="text-sm text-gray-600">
+                Page {schoolsPage} of {schoolsTotalPages}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSchoolsPage((p) => Math.min(schoolsTotalPages, p + 1))}
+                disabled={schoolsPage >= schoolsTotalPages}
+                className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
+          </>
         )}
         {activeNav === 'promoters' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
+          <>
+            <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
             {promoters.length === 0 ? (
               <p className="px-5 py-8 text-gray-500">No promoters yet. Use &quot;Add Promoter&quot; on Dashboard.</p>
             ) : (
-              promoters.map((p) => {
+              pagedPromoters.map((p) => {
                 const linkedPromo = promoCodes.find((c) => c.promoterId === p.id);
                 return (
                   <div key={p.id} className="px-5 py-4 hover:bg-gray-50 flex items-start gap-4">
@@ -275,10 +444,26 @@ export default function SuperAdminDashboard() {
                       <img src={p.photo} alt={p.name} className="w-12 h-12 rounded-full object-cover border border-gray-200 flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800">{p.name}</p>
-                      <p className="text-sm text-gray-600">{p.email}</p>
-                      {p.mobile && <p className="text-sm text-gray-600">Mobile: {p.mobile}</p>}
-                      {p.address && <p className="text-sm text-gray-500 truncate" title={p.address}>{p.address}</p>}
+                      <p style={twoLineEllipsisStyle} className="font-medium text-gray-800">
+                        {p.name}
+                      </p>
+                      <p style={twoLineEllipsisStyle} className="text-sm text-gray-600">
+                        {p.email}
+                      </p>
+                      {p.mobile && (
+                        <p style={twoLineEllipsisStyle} className="text-sm text-gray-600">
+                          Mobile: {p.mobile}
+                        </p>
+                      )}
+                      {p.address && (
+                        <p
+                          style={twoLineEllipsisStyle}
+                          className="text-sm text-gray-500"
+                          title={p.address}
+                        >
+                          {p.address}
+                        </p>
+                      )}
                       {p.referralCode && <p className="text-xs text-gray-500 mt-1">Referral: {p.referralCode}</p>}
                       {linkedPromo && (
                         <p className="text-xs text-indigo-600 mt-1 font-medium">
@@ -291,7 +476,32 @@ export default function SuperAdminDashboard() {
                 );
               })
             )}
-          </div>
+            </div>
+
+            {promoters.length > PROMOTERS_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setPromotersPage((p) => Math.max(1, p - 1))}
+                  disabled={promotersPage <= 1}
+                  className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <div className="text-sm text-gray-600">
+                  Page {promotersPage} of {promotersTotalPages}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromotersPage((p) => Math.min(promotersTotalPages, p + 1))}
+                  disabled={promotersPage >= promotersTotalPages}
+                  className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
         {activeNav === 'sponsors' && (
           <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
@@ -394,6 +604,24 @@ export default function SuperAdminDashboard() {
                 value={promoterForm.referralCode}
                 onChange={(e) => handlePromoterFormChange('referralCode', e.target.value)}
                 placeholder="Referral code (if any)"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+
+              <input
+                value={promoterForm.instagramProfileLink}
+                onChange={(e) =>
+                  handlePromoterFormChange('instagramProfileLink', e.target.value)
+                }
+                placeholder="Instagram profile link (optional)"
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+
+              <input
+                value={promoterForm.youtubeProfileLink}
+                onChange={(e) =>
+                  handlePromoterFormChange('youtubeProfileLink', e.target.value)
+                }
+                placeholder="YouTube profile link (optional)"
                 className="w-full p-3 border border-gray-300 rounded-lg"
               />
               <textarea

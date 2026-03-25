@@ -131,43 +131,131 @@ function Register() {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [registrationType, setRegistrationType] = useState('INFLUENCER');
+  const [influencerName, setInfluencerName] = useState('');
+  const [influencerHouse, setInfluencerHouse] = useState('');
+  const [influencerStreet, setInfluencerStreet] = useState('');
+  const [influencerDistrict, setInfluencerDistrict] = useState('');
+  const [influencerState, setInfluencerState] = useState('');
+  const [influencerPincode, setInfluencerPincode] = useState('');
+  const [influencerPromoCode, setInfluencerPromoCode] = useState('');
+  const [influencerPhoto, setInfluencerPhoto] = useState(null); // base64 data URL
+  const [influencerInstagramProfileLink, setInfluencerInstagramProfileLink] = useState('');
+  const [influencerYoutubeProfileLink, setInfluencerYoutubeProfileLink] = useState('');
+
+  // School registration-specific fields
+  const [schoolName, setSchoolName] = useState('');
+  const [schoolHouse, setSchoolHouse] = useState('');
+  const [schoolStreet, setSchoolStreet] = useState('');
+  const [schoolDistrict, setSchoolDistrict] = useState('');
+  const [schoolState, setSchoolState] = useState('');
+  const [schoolPincode, setSchoolPincode] = useState('');
+  const [schoolHasMultipleBranches, setSchoolHasMultipleBranches] = useState(false);
+  const [schoolBranchCode, setSchoolBranchCode] = useState('');
+  const [schoolLogo, setSchoolLogo] = useState(null); // base64 data URL
+
+  const [focusedField, setFocusedField] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const navigate = useNavigate();
 
   const handleRegister = async () => {
-    // Basic validations
-    if (!email || !mobile || !password || !confirmPassword) {
-      alert('Please fill in all the fields!');
-      return;
-    }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      alert('Enter a valid email address!');
+    const mobileRegex = /^[6-9]\d{9}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+    const nextErrors = {};
+
+    if (!email.trim()) nextErrors.email = 'Email is required.';
+    else if (!emailRegex.test(email.trim())) nextErrors.email = 'Enter a valid email address.';
+
+    if (!mobile.trim()) nextErrors.mobile = 'Mobile number is required.';
+    else if (!mobileRegex.test(mobile.trim())) {
+      nextErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6-9.';
+    }
+
+    if (!registrationType) nextErrors.registrationType = 'Please select Schools or Influencers.';
+
+    if (!password) nextErrors.password = 'Password is required.';
+    else if (!passwordRegex.test(password)) {
+      nextErrors.password =
+        'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.';
+    }
+
+    if (!confirmPassword) nextErrors.confirmPassword = 'Confirm password is required.';
+    else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
+
+    if (registrationType === 'INFLUENCER') {
+      if (!influencerName.trim()) nextErrors.name = 'Name is required.';
+      if (!influencerHouse.trim()) nextErrors.house = 'House is required.';
+      if (!influencerStreet.trim()) nextErrors.street = 'Street is required.';
+      if (!influencerDistrict.trim()) nextErrors.district = 'District is required.';
+      if (!influencerState.trim()) nextErrors.state = 'State is required.';
+      if (!influencerPincode.trim()) nextErrors.pincode = 'Pincode is required.';
+      else if (!/^\d{6}$/.test(influencerPincode.trim()))
+        nextErrors.pincode = 'Please enter a valid 6-digit pincode.';
+    }
+
+    if (registrationType === 'SCHOOL') {
+      if (!schoolName.trim()) nextErrors.schoolName = 'School name is required.';
+      if (!schoolHouse.trim()) nextErrors.schoolHouse = 'House is required.';
+      if (!schoolStreet.trim()) nextErrors.schoolStreet = 'Street is required.';
+      if (!schoolDistrict.trim()) nextErrors.schoolDistrict = 'District is required.';
+      if (!schoolState.trim()) nextErrors.schoolState = 'State is required.';
+      if (!schoolPincode.trim()) nextErrors.schoolPincode = 'Pincode is required.';
+      else if (!/^\d{6}$/.test(schoolPincode.trim()))
+        nextErrors.schoolPincode = 'Please enter a valid 6-digit pincode.';
+
+      if (schoolHasMultipleBranches && !schoolBranchCode.trim()) {
+        nextErrors.schoolBranchCode = 'Branch code is required.';
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors);
+      const firstKey = Object.keys(nextErrors)[0];
+      setFocusedField(firstKey === 'registrationType' ? null : firstKey);
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(mobile.trim())) {
-      alert('Enter a valid 10-digit mobile number starting with 6-9');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      alert('Passwords do not match!');
-      return;
-    }
-
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password)) {
-      alert('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
-      return;
-    }
-
-
+    setFormErrors({});
 
     const payload = {
       username: email.trim(),
       password: password,
       mobilenumber: mobile.trim(),
+      role: registrationType,
     };
+
+    if (registrationType === 'INFLUENCER') {
+      payload.name = influencerName.trim();
+      payload.house = influencerHouse.trim();
+      payload.street = influencerStreet.trim();
+      payload.district = influencerDistrict.trim();
+      payload.state = influencerState.trim();
+      payload.pincode = influencerPincode.trim();
+      payload.address = `${influencerHouse.trim()}, ${influencerStreet.trim()}, ${influencerDistrict.trim()}`;
+      if (influencerPromoCode.trim()) payload.promoCode = influencerPromoCode.trim();
+      if (influencerPhoto) payload.photo = influencerPhoto;
+      if (influencerInstagramProfileLink.trim()) {
+        payload.instagramProfileLink = influencerInstagramProfileLink.trim();
+      }
+      if (influencerYoutubeProfileLink.trim()) {
+        payload.youtubeProfileLink = influencerYoutubeProfileLink.trim();
+      }
+    }
+
+    if (registrationType === 'SCHOOL') {
+      payload.name = schoolName.trim();
+      payload.house = schoolHouse.trim();
+      payload.street = schoolStreet.trim();
+      payload.district = schoolDistrict.trim();
+      payload.state = schoolState.trim();
+      payload.pincode = schoolPincode.trim();
+      payload.address = `${schoolHouse.trim()}, ${schoolStreet.trim()}, ${schoolDistrict.trim()}`;
+      payload.hasMultipleBranches = !!schoolHasMultipleBranches;
+      payload.branchCode = schoolHasMultipleBranches ? schoolBranchCode.trim() : '';
+      if (schoolLogo) payload.photo = schoolLogo;
+    }
 
     try {
       const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/registerUser', {
@@ -195,7 +283,19 @@ function Register() {
   return (
     <div>
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <div className="text-xl font-bold text-green-800">Alpha Vlogs</div>
+        </button>
         <button
           onClick={() => navigate('/')}
           className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
@@ -204,12 +304,12 @@ function Register() {
         </button>
       </header>
 
-      <div className="flex justify-center items-center h-screen bg-gradient-to-tr from-green-100 to-green-300">
+      <div className="flex justify-center items-start min-h-screen py-10 bg-gradient-to-tr from-green-100 to-green-300 overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
-          className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md"
+          className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto"
         >
           <h2 className="text-3xl font-bold mb-6 text-green-700 text-center">
             Create a New Account
@@ -219,33 +319,465 @@ function Register() {
             value={email}
             type="email"
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-4 border border-green-300 rounded-lg mb-4 text-lg"
+            onFocus={() => setFocusedField('email')}
+            onBlur={() => setFocusedField(null)}
+            className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+              formErrors.email
+                ? 'border-red-600'
+                : focusedField === 'email'
+                  ? 'border-green-700'
+                  : 'border-green-300'
+            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
             placeholder="Email"
+            required
           />
+          {formErrors.email && (
+            <p className="text-xs text-red-600 mt-1">{formErrors.email}</p>
+          )}
           <motion.input
             whileFocus={{ scale: 1.02 }}
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
-            className="w-full p-4 border border-green-300 rounded-lg mb-4 text-lg"
+            onFocus={() => setFocusedField('mobile')}
+            onBlur={() => setFocusedField(null)}
+            className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+              formErrors.mobile
+                ? 'border-red-600'
+                : focusedField === 'mobile'
+                  ? 'border-green-700'
+                  : 'border-green-300'
+            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
             placeholder="Mobile Number"
             type="tel"
+            required
           />
+          {formErrors.mobile && (
+            <p className="text-xs text-red-600 mt-1">{formErrors.mobile}</p>
+          )}
+          <div className="w-full mb-4">
+            <div className="flex gap-2 bg-green-50 p-1 rounded-lg border border-green-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setRegistrationType('SCHOOL');
+                  setFormErrors({});
+                  setFocusedField(null);
+                }}
+                className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
+                  registrationType === 'SCHOOL'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white text-green-700 hover:bg-green-100'
+                }`}
+              >
+                Schools
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegistrationType('INFLUENCER');
+                  setFormErrors({});
+                  setFocusedField(null);
+                }}
+                className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
+                  registrationType === 'INFLUENCER'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white text-green-700 hover:bg-green-100'
+                }`}
+              >
+                Influencers
+              </button>
+            </div>
+          </div>
+          {formErrors.registrationType && (
+            <p className="text-xs text-red-600 mt-2">{formErrors.registrationType}</p>
+          )}
+
+          {registrationType === 'SCHOOL' && (
+            <div className="w-full mb-4">
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                onFocus={() => setFocusedField('schoolName')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolName
+                    ? 'border-red-600'
+                    : focusedField === 'schoolName'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Name of school"
+                required
+              />
+              {formErrors.schoolName && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolName}</p>
+              )}
+
+              <div className="w-full mb-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={schoolHasMultipleBranches}
+                    onChange={(e) => setSchoolHasMultipleBranches(e.target.checked)}
+                  />
+                  School has multiple branches
+                </label>
+              </div>
+
+              {schoolHasMultipleBranches && (
+                <>
+                  <motion.input
+                    whileFocus={{ scale: 1.02 }}
+                    value={schoolBranchCode}
+                    onChange={(e) => setSchoolBranchCode(e.target.value)}
+                    onFocus={() => setFocusedField('schoolBranchCode')}
+                    onBlur={() => setFocusedField(null)}
+                    className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                      formErrors.schoolBranchCode
+                        ? 'border-red-600'
+                        : focusedField === 'schoolBranchCode'
+                          ? 'border-green-700'
+                          : 'border-green-300'
+                    } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                    placeholder="Branch code"
+                    required
+                  />
+                  {formErrors.schoolBranchCode && (
+                    <p className="text-xs text-red-600 mt-1">{formErrors.schoolBranchCode}</p>
+                  )}
+                </>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolHouse}
+                onChange={(e) => setSchoolHouse(e.target.value)}
+                onFocus={() => setFocusedField('schoolHouse')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolHouse
+                    ? 'border-red-600'
+                    : focusedField === 'schoolHouse'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="House"
+                required
+              />
+              {formErrors.schoolHouse && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolHouse}</p>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolStreet}
+                onChange={(e) => setSchoolStreet(e.target.value)}
+                onFocus={() => setFocusedField('schoolStreet')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolStreet
+                    ? 'border-red-600'
+                    : focusedField === 'schoolStreet'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Street"
+                required
+              />
+              {formErrors.schoolStreet && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolStreet}</p>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolDistrict}
+                onChange={(e) => setSchoolDistrict(e.target.value)}
+                onFocus={() => setFocusedField('schoolDistrict')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolDistrict
+                    ? 'border-red-600'
+                    : focusedField === 'schoolDistrict'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="District"
+                required
+              />
+              {formErrors.schoolDistrict && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolDistrict}</p>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolState}
+                onChange={(e) => setSchoolState(e.target.value)}
+                onFocus={() => setFocusedField('schoolState')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolState
+                    ? 'border-red-600'
+                    : focusedField === 'schoolState'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="State"
+                required
+              />
+              {formErrors.schoolState && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolState}</p>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={schoolPincode}
+                onChange={(e) => setSchoolPincode(e.target.value)}
+                onFocus={() => setFocusedField('schoolPincode')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.schoolPincode
+                    ? 'border-red-600'
+                    : focusedField === 'schoolPincode'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Pincode"
+                inputMode="numeric"
+                required
+              />
+              {formErrors.schoolPincode && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.schoolPincode}</p>
+              )}
+
+              <div className="w-full mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  School logo (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-sm"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setSchoolLogo(null);
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => setSchoolLogo(reader.result);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {registrationType === 'INFLUENCER' && (
+            <div className="w-full mb-4">
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerName}
+                onChange={(e) => setInfluencerName(e.target.value)}
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.name
+                    ? 'border-red-600'
+                    : focusedField === 'name'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Name"
+                required
+              />
+              {formErrors.name && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.name}</p>
+              )}
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerHouse}
+                onChange={(e) => setInfluencerHouse(e.target.value)}
+                onFocus={() => setFocusedField('house')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.house
+                    ? 'border-red-600'
+                    : focusedField === 'house'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="House"
+                required
+              />
+              {formErrors.house && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.house}</p>
+              )}
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerStreet}
+                onChange={(e) => setInfluencerStreet(e.target.value)}
+                onFocus={() => setFocusedField('street')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.street
+                    ? 'border-red-600'
+                    : focusedField === 'street'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Street"
+                required
+              />
+              {formErrors.street && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.street}</p>
+              )}
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerDistrict}
+                onChange={(e) => setInfluencerDistrict(e.target.value)}
+                onFocus={() => setFocusedField('district')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.district
+                    ? 'border-red-600'
+                    : focusedField === 'district'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="District"
+                required
+              />
+              {formErrors.district && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.district}</p>
+              )}
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerState}
+                onChange={(e) => setInfluencerState(e.target.value)}
+                onFocus={() => setFocusedField('state')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.state
+                    ? 'border-red-600'
+                    : focusedField === 'state'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="State"
+                required
+              />
+              {formErrors.state && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.state}</p>
+              )}
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerPincode}
+                onChange={(e) => setInfluencerPincode(e.target.value)}
+                onFocus={() => setFocusedField('pincode')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+                  formErrors.pincode
+                    ? 'border-red-600'
+                    : focusedField === 'pincode'
+                      ? 'border-green-700'
+                      : 'border-green-300'
+                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                placeholder="Pincode"
+                inputMode="numeric"
+                required
+              />
+              {formErrors.pincode && (
+                <p className="text-xs text-red-600 mt-1">{formErrors.pincode}</p>
+              )}
+
+              <div className="w-full mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Photo (optional)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-sm"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setInfluencerPhoto(null);
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => setInfluencerPhoto(reader.result);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </div>
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerPromoCode}
+                onChange={(e) => setInfluencerPromoCode(e.target.value)}
+                className="w-full p-4 border border-green-300 rounded-lg mb-0 text-lg"
+                placeholder="Promo code (optional)"
+              />
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerInstagramProfileLink}
+                onChange={(e) => setInfluencerInstagramProfileLink(e.target.value)}
+                className="w-full p-4 border border-green-300 rounded-lg mt-4 mb-4 text-lg"
+                placeholder="Instagram profile link (optional)"
+              />
+
+              <motion.input
+                whileFocus={{ scale: 1.02 }}
+                value={influencerYoutubeProfileLink}
+                onChange={(e) => setInfluencerYoutubeProfileLink(e.target.value)}
+                className="w-full p-4 border border-green-300 rounded-lg mb-0 text-lg"
+                placeholder="YouTube profile link (optional)"
+              />
+            </div>
+          )}
+
           <motion.input
             whileFocus={{ scale: 1.02 }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-4 border border-green-300 rounded-lg mb-4 text-lg"
+            onFocus={() => setFocusedField('password')}
+            onBlur={() => setFocusedField(null)}
+            className={`w-full p-4 border rounded-lg mb-4 text-lg ${
+              formErrors.password
+                ? 'border-red-600'
+                : focusedField === 'password'
+                  ? 'border-green-700'
+                  : 'border-green-300'
+            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
             placeholder="Password"
             type="password"
+            required
           />
+          {formErrors.password && (
+            <p className="text-xs text-red-600 mt-1">{formErrors.password}</p>
+          )}
           <motion.input
             whileFocus={{ scale: 1.02 }}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full p-4 border border-green-300 rounded-lg mb-6 text-lg"
+            onFocus={() => setFocusedField('confirmPassword')}
+            onBlur={() => setFocusedField(null)}
+            className={`w-full p-4 border rounded-lg mb-6 text-lg ${
+              formErrors.confirmPassword
+                ? 'border-red-600'
+                : focusedField === 'confirmPassword'
+                  ? 'border-green-700'
+                  : 'border-green-300'
+            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
             placeholder="Confirm Password"
             type="password"
+            required
           />
+          {formErrors.confirmPassword && (
+            <p className="text-xs text-red-600 mt-1">{formErrors.confirmPassword}</p>
+          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             onClick={handleRegister}

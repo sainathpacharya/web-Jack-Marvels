@@ -2,34 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import bgImage from '../assets/images/bg.jpg';
 
-const eventVideos = {
-  dance: [
-    {
-      title: 'Dance Performance 1',
-      videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      thumbnail: 'https://img.youtube.com/vi/7C2z4GqqS5E/mqdefault.jpg',
-    },
-    {
-      title: 'Dance Performance 2',
-      videoUrl: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4',
-      thumbnail: 'https://img.youtube.com/vi/tgbNymZ7vqY/mqdefault.jpg',
-    },
-  ],
-  singing: [
-    {
-      title: 'Singing Performance 1',
-      videoUrl: 'https://www.w3schools.com/html/movie.mp4',
-      thumbnail: 'https://img.youtube.com/vi/2Vv-BfVoq4g/mqdefault.jpg',
-    },
-  ],
-  games: [
-    {
-      title: 'Gaming Highlights',
-      videoUrl: 'https://samplelib.com/lib/preview/mp4/sample-10s.mp4',
-      thumbnail: 'https://img.youtube.com/vi/LXb3EKWsInQ/mqdefault.jpg',
-    },
-  ],
-};
+import eventVideos from '../data/eventDetailVideosCatalog.json';
 
 function EventDetail() {
   const { id } = useParams();

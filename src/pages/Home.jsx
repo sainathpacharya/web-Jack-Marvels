@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Player } from '@lottiefiles/react-lottie-player';
+import { clearSession, getCurrentUser, getUserRoleId, getUserRoleName } from '../auth/session';
 import {
   subscribeAnimation,
   paymentAnimation,
@@ -29,6 +30,9 @@ import {
   twinsAct,
 } from '../animations';
 
+import eventsCatalog from '../data/eventsCatalog.json';
+import { getDashBoardDetails } from '../api/dashboard';
+
 
 
 
@@ -37,24 +41,229 @@ import {
 
 const Home = () => {
   const navigate = useNavigate();
+  const user = getCurrentUser();
+  const userRoleId = getUserRoleId();
+  const userRoleName = getUserRoleName();
+  const isAdmin = userRoleId === 1;
+  const hideSubscribeButton = [1, 3, 4].includes(userRoleId);
+  const fallbackResultsActions = isAdmin
+    ? [
+        {
+          name: 'Add School',
+          animation: resultsAnimation,
+          path: '/admin',
+          navState: { defaultNav: 'schools' },
+        },
+        {
+          name: 'Add Promoter',
+          animation: paymentAnimation,
+          path: '/admin',
+          navState: { defaultNav: 'promotors' },
+        },
+        {
+          name: 'Announce Results',
+          animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
+          path: '/results',
+        },
+        { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
+        { name: 'Admin Actions', animation: resultsAnimation, path: '/admin' },
+      ]
+    : [
+        {
+          name: 'Announce Results',
+          animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
+          path: '/results',
+        },
+        { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
+        {
+          name: 'Send Notice',
+          animation: 'https://assets1.lottiefiles.com/packages/lf20_fcfjwiyb.json',
+          path: '/home',
+        },
+      ];
+
+  const lottieByKey = {
+    singing,
+    dance,
+    painting,
+    quiz,
+    poetry,
+    debate,
+    crafting,
+    drama,
+    movieDialogues,
+    science,
+    specialTalent,
+    tongueTwister,
+    twinsAct,
+    shayari,
+    poems,
+    nationalAnthem,
+    footBall,
+    basketBall,
+    cooking,
+  };
+
+  const resolveAnimation = (anim) => {
+    if (!anim) return anim;
+    if (typeof anim !== 'string') return anim;
+    // If backend returns animation as a URL, return as-is.
+    if (anim.startsWith('http://') || anim.startsWith('https://')) return anim;
+    return lottieByKey[anim] || anim;
+  };
+
   const [showPlans, setShowPlans] = useState(false);
   const [dashBoardDetails, setDashBoardDetails] = useState({ "Results": [], "performers": [], "Events": [], })
 
+  const EVENTS_SCHEDULE_KEY = 'eventsSchedules';
+
+  const [eventSchedules, setEventSchedules] = useState(() => {
+    try {
+      const raw = localStorage.getItem(EVENTS_SCHEDULE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [nowMs, setNowMs] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [fromValue, setFromValue] = useState('');
+  const [toValue, setToValue] = useState('');
+
+  const eventKey = (evt) => (evt?.id || evt?.path || evt?.name || '').toString();
+
+  const toDateTimeLocalValue = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    // datetime-local expects: YYYY-MM-DDTHH:mm
+    return d.toISOString().slice(0, 16);
+  };
+
+  const getSchedule = (evt) => {
+    const idKey = evt?.id ? evt.id.toString() : '';
+    const pathKey = evt?.path ? evt.path.toString() : '';
+    const nameKey = evt?.name ? evt.name.toString() : '';
+
+    if (idKey && eventSchedules[idKey]) return eventSchedules[idKey];
+    if (pathKey && eventSchedules[pathKey]) return eventSchedules[pathKey];
+    if (nameKey && eventSchedules[nameKey]) return eventSchedules[nameKey];
+    return null;
+  };
+
+  const getEventState = (evt) => {
+    const schedule = getSchedule(evt);
+    const fromMs = schedule?.from ? new Date(schedule.from).getTime() : null;
+    const toMs = schedule?.to ? new Date(schedule.to).getTime() : null;
+    const hasRange = fromMs != null && toMs != null && !Number.isNaN(fromMs) && !Number.isNaN(toMs);
+    if (!hasRange) return { isActive: false, remainingMs: 0 };
+    const isActive = nowMs >= fromMs && nowMs <= toMs;
+    const remainingMs = isActive ? Math.max(0, toMs - nowMs) : 0;
+    return { isActive, remainingMs };
+  };
+
+  const formatRemaining = (ms) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const days = Math.floor(totalSeconds / (3600 * 24));
+    const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const openEventModal = (evt) => {
+    const schedule = getSchedule(evt);
+    setSelectedEvent(evt);
+    setFromValue(toDateTimeLocalValue(schedule?.from || ''));
+    setToValue(toDateTimeLocalValue(schedule?.to || ''));
+    setShowEventModal(true);
+  };
+
+  const saveEventSchedule = () => {
+    if (!selectedEvent) return;
+    if (!fromValue || !toValue) {
+      alert('Please select both From and To dates.');
+      return;
+    }
+    const fromMs = new Date(fromValue).getTime();
+    const toMs = new Date(toValue).getTime();
+    if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+      alert('Invalid date range.');
+      return;
+    }
+    if (toMs < fromMs) {
+      alert('To date must be greater than or equal to From date.');
+      return;
+    }
+
+    const key = eventKey(selectedEvent);
+    if (!key) return;
+
+    const updated = {
+      ...eventSchedules,
+      [key]: {
+        from: new Date(fromMs).toISOString(),
+        to: new Date(toMs).toISOString(),
+      },
+    };
+    setEventSchedules(updated);
+    localStorage.setItem(EVENTS_SCHEDULE_KEY, JSON.stringify(updated));
+    setShowEventModal(false);
+  };
+
 
   useEffect(() => {
+    const resultsActions = isAdmin
+      ? [
+          {
+            name: 'Add School',
+            animation: resultsAnimation,
+            path: '/admin',
+            navState: { defaultNav: 'schools' },
+          },
+          {
+            name: 'Add Promoter',
+            animation: paymentAnimation,
+            path: '/admin',
+            navState: { defaultNav: 'promotors' },
+          },
+          {
+            name: 'Announce Results',
+            animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
+            path: '/results',
+          },
+          { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
+          {
+            name: 'Admin Actions',
+            animation: resultsAnimation,
+            path: '/admin',
+          },
+        ]
+      : [
+          {
+            name: 'Announce Results',
+            animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
+            path: '/results',
+          },
+          { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
+          {
+            name: 'Send Notice',
+            animation: 'https://assets1.lottiefiles.com/packages/lf20_fcfjwiyb.json',
+            path: '/home',
+          },
+        ];
+
     setDashBoardDetails({
-      "Results": [{
-        name: 'Announce Results',
-        animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
-        path: '/results',
-      },
-      { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
-      {
-        name: 'Send Notice',
-        animation: 'https://assets1.lottiefiles.com/packages/lf20_fcfjwiyb.json',
-        path: null,
-      },
-      ],
+      "Results": resultsActions,
       "performers": [
         {
           event: "Singing Competition",
@@ -124,25 +333,72 @@ const Home = () => {
         },
       ],
       "Events": [
-        { name: 'Singing', animation: singing, path: '/events/singing' },
-        { name: 'Dancing', animation: dance, path: '/events/dancing' },
-        { name: 'Painting', animation: painting, path: '/events/painting' },
-        { name: 'Quiz', animation: quiz, path: '/events/quiz' },
-        { name: 'Poetry', animation: poetry, path: '/events/poetry' },
-        { name: 'Debate', animation: debate, path: '/events/debate' },
-        { name: 'Crafting', animation: crafting, path: '/events/crafting' },
-        { name: 'Drama', animation: drama, path: '/events/drama' },
-        { name: 'Movie Dialogues', animation: movieDialogues, path: '/events/movie-dialogues' },
-        { name: 'Science Fair', animation: science, path: '/events/science' },
-        { name: 'Special Talent', animation: specialTalent, path: '/events/special-talent' },
-        { name: 'Twins Act', animation: twinsAct, path: '/events/twins-act' },
-        { name: 'Tongue Twister', animation: tongueTwister, path: '/events/tongue-twister' },
+        ...eventsCatalog.map((evt) => ({
+          ...evt,
+          // Optional fallback animation (we still have lottie assets available).
+          animation:
+            {
+              '/events/singing': singing,
+              '/events/dancing': dance,
+              '/events/painting': painting,
+              '/events/quiz': quiz,
+              '/events/poetry': poetry,
+              '/events/debate': debate,
+              '/events/crafting': crafting,
+              '/events/drama': drama,
+              '/events/movie-dialogues': movieDialogues,
+              '/events/science': science,
+              '/events/special-talent': specialTalent,
+              '/events/twins-act': twinsAct,
+              '/events/tongue-twister': tongueTwister,
+            }[evt.path],
+        })),
       ]
     })
-  })
+  }, [isAdmin])
+
+  // Fetch dashboard details dynamically after login.
+  useEffect(() => {
+    if (userRoleId == null) return;
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const apiDetails = await getDashBoardDetails();
+        if (cancelled) return;
+
+        const normalized = {
+          ...apiDetails,
+          Results: Array.isArray(apiDetails?.Results)
+            ? apiDetails.Results.map((r) => ({ ...r, animation: resolveAnimation(r.animation) }))
+            : [],
+          performers: Array.isArray(apiDetails?.performers) ? apiDetails.performers : [],
+          Events: Array.isArray(apiDetails?.Events)
+            ? apiDetails.Events.map((e) => ({ ...e, animation: resolveAnimation(e.animation) }))
+            : [],
+        };
+
+        setDashBoardDetails((prev) => {
+          if (isAdmin) {
+            // Keep admin quick-actions (role-based) even if backend doesn't include them yet.
+            const resultsToUse = prev?.Results?.length ? prev.Results : fallbackResultsActions;
+            return { ...prev, ...normalized, Results: resultsToUse };
+          }
+          return normalized;
+        });
+      } catch (e) {
+        console.error('Failed to load dashboard details:', e);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [userRoleId, isAdmin]);
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    clearSession();
     navigate('/');
   };
 
@@ -150,16 +406,30 @@ const Home = () => {
     <div>
       {/* Header */}
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-          Alpha Vlogs
-        </h1>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
+            Alpha Vlogs
+          </h1>
+        </button>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowPlans(true)}
-            className="bg-yellow-500 text-white px-4 py-2 rounded-full hover:bg-yellow-600 transition text-sm"
-          >
-            Subscribe
-          </button>
+          {!hideSubscribeButton && (
+            <button
+              onClick={() => setShowPlans(true)}
+              className="bg-yellow-500 text-white px-4 py-2 rounded-full hover:bg-yellow-600 transition text-sm"
+            >
+              Subscribe
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition text-sm"
@@ -174,6 +444,11 @@ const Home = () => {
           <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">◉</span>
           Dashboard
         </h2>
+        {isAdmin && (
+          <p className="mt-2 text-sm text-gray-500">
+            Welcome {userRoleName || 'Admin'}
+          </p>
+        )}
       </div>
       {/* Menu Buttons */}
       {dashBoardDetails.Results.length > 0 && <section className="mt-16 mb-20 px-4">
@@ -195,7 +470,11 @@ const Home = () => {
               className="relative bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-4 flex flex-col items-center justify-center cursor-pointer group border border-indigo-100"
               onClick={() => {
                 if (item.path) {
-                  navigate(item.path);
+                  if (item.navState) {
+                    navigate(item.path, { state: item.navState });
+                  } else {
+                    navigate(item.path);
+                  }
                 } else {
                   toast.info('📢 Coming Soon!', {
                     position: 'top-center',
@@ -290,15 +569,111 @@ const Home = () => {
               className={`bg-gradient-to-br from-white via-${i % 2 === 0 ? 'indigo-50' : 'pink-50'} to-white 
                 p-4 rounded-2xl shadow-lg hover:shadow-2xl transition 
                 flex flex-col items-center cursor-pointer border border-gray-200`}
-              onClick={() => navigate(item.path)}
+              onClick={() => openEventModal(item)}
             >
               <div className="bg-white p-3 rounded-full shadow-inner">
-                <Player autoplay loop src={item.animation} style={{ height: 80, width: 80 }} />
+                {item.gifUrl ? (
+                  <img
+                    src={item.gifUrl}
+                    alt={item.name}
+                    className="h-20 w-20 object-contain"
+                    loading="lazy"
+                  />
+                ) : item.animation ? (
+                  <Player autoplay loop src={item.animation} style={{ height: 80, width: 80 }} />
+                ) : null}
               </div>
               <span className="mt-3 text-sm font-semibold text-gray-700 text-center">{item.name}</span>
+
+              {(() => {
+                const { isActive, remainingMs } = getEventState(item);
+                if (!isActive) {
+                  return <div className="mt-1 text-xs text-gray-400 text-center">Inactive</div>;
+                }
+                return <div className="mt-1 text-xs text-green-700 text-center">Ends in {formatRemaining(remainingMs)}</div>;
+              })()}
             </motion.div>
           ))}
         </div>}
+
+        {/* Event schedule modal */}
+        {showEventModal && selectedEvent && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 my-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800">Set Event Dates</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedEvent.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEventModal(false)}
+                  className="text-gray-500 hover:text-gray-800 text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+                    <input
+                      type="datetime-local"
+                      value={fromValue}
+                      onChange={(e) => setFromValue(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                    <input
+                      type="datetime-local"
+                      value={toValue}
+                      onChange={(e) => setToValue(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {(() => {
+                  const { isActive, remainingMs } = getEventState(selectedEvent);
+                  return (
+                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                      <div className="text-sm text-gray-700 font-medium">
+                        Current Status: <span className={isActive ? 'text-green-700' : 'text-gray-600'}>{isActive ? 'Active' : 'Inactive'}</span>
+                      </div>
+                      {isActive && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          Remaining time: <span className="font-medium">{formatRemaining(remainingMs)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex gap-3 mt-5 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEventModal(false)}
+                  className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEventSchedule}
+                  className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Save & Set Active
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
 
 

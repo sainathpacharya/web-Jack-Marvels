@@ -1,69 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
+import { clearSession } from '../auth/session';
 
-const eventVideos = [
-  {
-    id: '1',
-    title: 'Kids Singing Performance',
-    videoId: '6ZfuNTqbHE8', // Popular kids choir/contest themes
-    thumbnail: 'https://img.youtube.com/vi/6ZfuNTqbHE8/mqdefault.jpg',
-  },
-  {
-    id: '2',
-    title: 'Junior Dance Talent',
-    videoId: 'ScMzIvxBSi4',
-    thumbnail: 'https://img.youtube.com/vi/ScMzIvxBSi4/mqdefault.jpg',
-  },
-  {
-    id: '3',
-    title: 'Science Fair Winner',
-    videoId: 'aqz-KE-bpKQ',
-    thumbnail: 'https://img.youtube.com/vi/aqz-KE-bpKQ/mqdefault.jpg',
-  },
-  {
-    id: '4',
-    title: 'Poetry Recitation by Kids',
-    videoId: 'M7lc1UVf-VE',
-    thumbnail: 'https://img.youtube.com/vi/M7lc1UVf-VE/mqdefault.jpg',
-  },
-  {
-    id: '5',
-    title: 'Drama Scene - Kids Special',
-    videoId: 'tgbNymZ7vqY',
-    thumbnail: 'https://img.youtube.com/vi/tgbNymZ7vqY/mqdefault.jpg',
-  },
-  {
-    id: '6',
-    title: 'Art and Craft Show',
-    videoId: 'dQw4w9WgXcQ',
-    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
-  },
-  {
-    id: '7',
-    title: 'Kids Magic Talent',
-    videoId: 'e-ORhEE9VVg',
-    thumbnail: 'https://img.youtube.com/vi/e-ORhEE9VVg/mqdefault.jpg',
-  },
-  {
-    id: '8',
-    title: 'Twins Act Special',
-    videoId: 'dQw4w9WgXcQ',
-    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
-  },
-  {
-    id: '9',
-    title: 'Quiz Competition Highlights',
-    videoId: '2Vv-BfVo4g',
-    thumbnail: 'https://img.youtube.com/vi/2Vv-BfVo4g/mqdefault.jpg',
-  },
-  {
-    id: '10',
-    title: 'Tongue Twister Finals',
-    videoId: 'LXb3EKWsInQ',
-    thumbnail: 'https://img.youtube.com/vi/LXb3EKWsInQ/mqdefault.jpg',
-  },
-];
+import eventVideos from '../data/eventVideosCatalog.json';
 
 export default function Events() {
   const { id } = useParams();
@@ -73,14 +13,26 @@ export default function Events() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    clearSession();
     navigate('/');
   };
 
   return (
     <div className="bg-green-100">
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <div className="text-2xl font-bold text-green-800">Alpha Vlogs</div>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <div className="text-xl font-bold text-green-800">Alpha Vlogs</div>
+        </button>
         {/* <nav className="hidden md:flex space-x-6 text-sm">
           <a href="#" className="hover:text-green-700">Home</a>
           <a href="#" className="hover:text-green-700">About</a>

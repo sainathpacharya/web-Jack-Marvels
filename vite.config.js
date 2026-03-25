@@ -9,5 +9,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // When VITE_API_BASE_URL is unset, relative `/api/*` requests hit Vite; forward them to Spring Boot.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
 });

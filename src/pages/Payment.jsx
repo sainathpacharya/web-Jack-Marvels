@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { clearSession } from '../auth/session';
 
 const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
 const PROMOTER_PROMO_CODES_KEY = 'promoterPromoCodes';
@@ -29,15 +30,27 @@ function Payment() {
   const discountedAmount = promoterPromo ? Math.round(studentPaymentAmount * (1 - discountPercent / 100)) : studentPaymentAmount;
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    clearSession();
     navigate('/');
   };
   return (
     <div>
       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-          Alpha Vlogs
-        </h1>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
+            Alpha Vlogs
+          </h1>
+        </button>
         <div className="flex items-center gap-3">
     
           <button

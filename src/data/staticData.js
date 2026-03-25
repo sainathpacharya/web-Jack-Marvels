@@ -32,32 +32,15 @@ export const STATIC_PROMO_CODES = [
 ];
 
 // --- Admin ---
-export const STATIC_TOTAL_STUDENTS = 20;
+export const STATIC_TOTAL_STUDENTS = 0;
 
-export const STATIC_RECENT_UPLOADS = [
-  'Student Name 1', 'Student Name 2', 'Student Name 2',
-  'Student Name 4', 'Student Name 3', 'Student Name 6',
-];
+export const STATIC_RECENT_UPLOADS = [];
 
-export const STATIC_QUIZ_ATTEMPTS = [
-  'Student Name 4', 'Student Name 5', 'Student Name 8', 'Student Name 6',
-];
+export const STATIC_QUIZ_ATTEMPTS = [];
 
-export const STATIC_STUDENTS_LIST = [
-  { id: 1, name: 'Student Name 1', email: 'student1@example.com', status: 'active' },
-  { id: 2, name: 'Student Name 2', email: 'student2@example.com', status: 'active' },
-  { id: 3, name: 'Student Name 3', email: 'student3@example.com', status: 'inactive' },
-  { id: 4, name: 'Student Name 4', email: 'student4@example.com', status: 'active' },
-  { id: 5, name: 'Student Name 5', email: 'student5@example.com', status: 'active' },
-  { id: 6, name: 'Student Name 6', email: 'student6@example.com', status: 'active' },
-];
+export const STATIC_STUDENTS_LIST = [];
 
-export const STATIC_UPLOADS_LIST = [
-  { id: 1, title: 'Dance Performance', student: 'Student Name 1', date: '2025-01-28' },
-  { id: 2, title: 'Singing Entry', student: 'Student Name 2', date: '2025-01-27' },
-  { id: 3, title: 'Science Project', student: 'Student Name 4', date: '2025-01-26' },
-  { id: 4, title: 'Poetry Recitation', student: 'Student Name 3', date: '2025-01-25' },
-];
+export const STATIC_UPLOADS_LIST = [];
 
 // --- Promoter (schools added by this promoter; eligible for promoter's promo discount) ---
 export const STATIC_SCHOOLS_ADDED = [

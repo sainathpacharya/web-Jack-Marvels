@@ -1,0 +1,35 @@
+[
+  {
+    "title": "Singing Competition",
+    "desc": "Showcase your vocal talent and wow the audience!",
+    "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
+    "winner": "Ananya Sharma",
+    "school": "Green Valley High",
+    "winnerDesc": "Ananya impressed everyone with her powerful classical rendition."
+  },
+  {
+    "title": "Dancing Showdown",
+    "desc": "Express yourself through dance with freestyle or classical.",
+    "videoUrl": "https://www.w3schools.com/html/movie.mp4",
+    "winner": "Rohan Mehta",
+    "school": "Sunrise Public School",
+    "winnerDesc": "Rohan’s freestyle dance amazed the judges with energy and creativity."
+  },
+  {
+    "title": "Drawing & Painting",
+    "desc": "Bring colors to life with your creative sketches.",
+    "videoUrl": "https://www.w3schools.com/html/mov_bbb.mp4",
+    "winner": "Sneha Roy",
+    "school": "Blue Ridge Academy",
+    "winnerDesc": "Sneha created a stunning nature-themed artwork full of detail and color."
+  },
+  {
+    "title": "Running Race",
+    "desc": "Race to the finish and feel the thrill of victory!",
+    "videoUrl": "https://www.w3schools.com/html/movie.mp4",
+    "winner": "Aryan Verma",
+    "school": "Harmony Kinderhaus",
+    "winnerDesc": "Aryan won with a blazing sprint finish, cheered by all."
+  }
+]
+

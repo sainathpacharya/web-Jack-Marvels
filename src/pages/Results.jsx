@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { clearSession } from '../auth/session';
 
-const eventOptions = [
-  'Singing', 'Dancing', 'Painting', 'Quiz', 'Poetry',
-  'Debate', 'Crafting', 'Drama', 'Movie Dialogues',
-  'Science Fair', 'Special Talent', 'Twins Act', 'Tongue Twister',
-];
+import eventsCatalog from '../data/eventsCatalog.json';
 
 function Results() {
+  const navigate = useNavigate();
+  const eventOptions = eventsCatalog.map((evt) => evt.name);
   const [form, setForm] = useState({
     event: '',
     winner: '',
@@ -38,16 +38,28 @@ function Results() {
     }
   };
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    clearSession();
     navigate('/');
   };
 
   return (
     <div>
        <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-          Alpha Vlogs
-        </h1>
+        <button
+          type="button"
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer bg-transparent"
+          aria-label="Go to Home"
+        >
+          <img
+            src="/alpha-vlogs-logo.png"
+            alt="Alpha Vlogs logo"
+            className="w-14 h-14 object-contain rounded-full"
+          />
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
+            Alpha Vlogs
+          </h1>
+        </button>
         <div className="flex items-center gap-3">
     
           <button
