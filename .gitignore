@@ -24,6 +24,9 @@ Thumbs.db
 # Large image file (90MB+)
 src/assets/images/10937540.jpg
 
+# Test / coverage
+coverage/
+
 # Temporary files
 *.tmp
 *.temp
