@@ -1,162 +1,159 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { clearSession } from '../auth/session';
-import { createSchool, listSchools } from '../api/schools';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logoutThunk } from '../store/slices/authSlice';
+import { selectRoleId } from '../store/selectors/authSelectors';
+import { ROLE_IDS } from '../auth/session';
+import {
+  useCreateSchoolMutation,
+  useDeleteSchoolMutation,
+  useSchoolsQuery,
+} from '../features/schools/hooks/useSchoolsQuery';
+import { useEventsQuery, useUpdateEventStatusMutation } from '../features/events/hooks/useEventsQuery';
+import {
+  useCreateSuperAdminMutation,
+  useResetSuperAdminPasswordMutation,
+  useSuperAdminsListQuery,
+  useUpdateSuperAdminStatusMutation,
+} from '../features/superAdmins/hooks/useSuperAdminsQuery';
+import useDebouncedValue from '../hooks/useDebouncedValue';
+import { addPromoterLocal, updatePromoterStatusLocal } from '../store/slices/promoterSlice';
+import { selectAllPromoters } from '../store/selectors/promoterSelectors';
 import {
   STATIC_TOTAL_STUDENTS,
   STATIC_RECENT_UPLOADS,
   STATIC_QUIZ_ATTEMPTS,
   STATIC_STUDENTS_LIST,
-  STATIC_SCHOOLS_ADDED,
 } from '../data/staticData';
+import { useNotifications } from '../components/notifications/NotificationProvider';
+import useNavigationPrefetch from '../hooks/useNavigationPrefetch';
+import {
+  IconBook,
+  IconBrain,
+  IconCalendar,
+  IconDashboard,
+  IconSchool,
+  IconUser,
+} from '../components/icons/AppIcons';
+import FormInput from '../components/forms/common/FormInput';
+import { PASSWORD_REQUIREMENTS_SUMMARY, validateStrongPassword } from '../lib/passwordPolicy';
 
-const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
-const PROMOTERS_KEY = 'adminPromoters';
+const AdminPromoterFormModal = lazy(() => import('../components/forms/admin/AdminPromoterFormModal'));
+const AdminSchoolFormModal = lazy(() => import('../components/forms/admin/AdminSchoolFormModal'));
 
 const SIDEBAR_ITEMS = [
-  { label: 'Dashboard', icon: '🕐', path: 'dashboard' },
-  { label: 'Students', icon: '✉️', path: 'students' },
-  { label: 'Events', icon: '🎉', path: 'events' },
-  { label: 'QUIZ', icon: '🧠', path: 'quiz' },
-  { label: 'Promotors', icon: '🧑‍💼', path: 'promotors' },
-  { label: 'Schools', icon: '🏫', path: 'schools' },
+  { label: 'Dashboard', icon: IconDashboard, path: 'dashboard' },
+  { label: 'View Students', icon: IconBook, path: 'students' },
+  { label: 'Events', icon: IconCalendar, path: 'events' },
+  { label: 'QUIZ', icon: IconBrain, path: 'quiz' },
+  { label: 'Promotors', icon: IconUser, path: 'promotors' },
+  { label: 'Influencers', icon: IconUser, path: 'influencers' },
+  { label: 'Partners', icon: IconSchool, path: 'partners' },
+  { label: 'Schools', icon: IconSchool, path: 'schools' },
+  { label: 'Profile', icon: IconUser, path: 'profile' },
 ];
 
-const getSchoolsAdded = () => {
-  try {
-    const raw = localStorage.getItem(PROMOTER_SCHOOLS_KEY);
-    const baseList = !raw ? [...STATIC_SCHOOLS_ADDED] : JSON.parse(raw);
-    const list = Array.isArray(baseList) ? baseList : [...STATIC_SCHOOLS_ADDED];
-    // Normalize so UI can rely on these fields.
-    return list.map((s) => ({
-      ...s,
-      email: s.email || '',
-      contactPhone: s.contactPhone || s.phone || '',
-      status: s.status === 'inactive' ? 'inactive' : 'active',
-      branchCode: s.branchCode || '',
-      studentsCount: s.studentsCount != null && s.studentsCount !== '' ? parseInt(s.studentsCount, 10) || 0 : 0,
-    }));
-  } catch {
-    return [...STATIC_SCHOOLS_ADDED].map((s) => ({
-      ...s,
-      email: s.email || '',
-      contactPhone: s.contactPhone || s.phone || '',
-      status: s.status === 'inactive' ? 'inactive' : 'active',
-      branchCode: s.branchCode || '',
-      studentsCount: s.studentsCount != null && s.studentsCount !== '' ? parseInt(s.studentsCount, 10) || 0 : 0,
-    }));
-  }
+const INITIAL_SCHOOL_FORM = {
+  name: '',
+  email: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  contactName: '',
+  contactPhone: '',
+  studentsCount: '',
+  hasBranches: false,
+  branchCode: '',
 };
 
-const getPromotersAdded = () => {
-  try {
-    const raw = localStorage.getItem(PROMOTERS_KEY);
-    const baseList = !raw ? [] : JSON.parse(raw);
-    const list = Array.isArray(baseList) ? baseList : [];
-    // Normalize so UI can rely on these fields.
-    return list.map((p) => ({
-      ...p,
-      email: p.email || '',
-      phone: p.phone || p.mobile || '',
-      instagramProfileLink: p.instagramProfileLink || p.instagram || '',
-      youtubeProfileLink: p.youtubeProfileLink || p.youtube || '',
-      status: p.status === 'inactive' ? 'inactive' : 'active',
-      promoCode: p.promoCode || '',
-      referralCode: p.referralCode || '',
-      address: p.address || '',
-      city: p.city || '',
-      state: p.state || '',
-      pincode: p.pincode || '',
-      addedAt: p.addedAt || '',
-    }));
-  } catch {
-    return [];
-  }
+const INITIAL_PROMOTER_FORM = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  referralCode: '',
+  promoCode: '',
+  instagramProfileLink: '',
+  youtubeProfileLink: '',
 };
+
+/** Partner accounts are super admins (same API as `/api/super-admins`). */
+const INITIAL_PARTNER_FORM = {
+  name: '',
+  email: '',
+  mobileNumber: '',
+};
+
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { success, error: notifyError, info } = useNotifications();
+  const { prefetchByPath } = useNavigationPrefetch();
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const [activeNav, setActiveNav] = useState(
     () => location.state?.defaultNav || 'dashboard'
   );
+  const userRoleId = useAppSelector(selectRoleId);
+  const isAdmin = Number(userRoleId) === ROLE_IDS.ADMIN;
+  /** Only ADMIN may add promoters, schools, influencers, partners, etc. Super admin is view-only here. */
+  const canManageAdminData = isAdmin;
+
+  useEffect(() => {
+    // RoleId 4 == Student: no access to the web application.
+    if (userRoleId === 4) {
+      dispatch(logoutThunk());
+      navigate('/');
+    }
+  }, [dispatch, userRoleId, navigate]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [schoolsAdded, setSchoolsAdded] = useState([]);
-  const [schoolsListMeta, setSchoolsListMeta] = useState(null);
-  const [schoolsListLoading, setSchoolsListLoading] = useState(false);
-  const [schoolsListError, setSchoolsListError] = useState(null);
-  const schoolsAddedCount = schoolsListMeta?.total ?? schoolsAdded.length;
   const SCHOOLS_PAGE_SIZE = 10;
   const [schoolsPage, setSchoolsPage] = useState(1);
+  const [localSchools, setLocalSchools] = useState([]);
+  const schoolQuery = { scope: 'admin', page: activeNav === 'schools' ? schoolsPage : 1, limit: SCHOOLS_PAGE_SIZE };
+  const schoolsQuery = useSchoolsQuery({ ...schoolQuery, fallbackToStatic: true });
+  const createSchoolMutation = useCreateSchoolMutation();
+  const deleteSchoolMutation = useDeleteSchoolMutation();
+  const schoolsList = schoolsQuery.data || { items: [], total: 0, page: schoolsPage, limit: SCHOOLS_PAGE_SIZE, totalPages: 1 };
+  const schoolsAdded = schoolsList.items;
+  const mergedSchoolsAdded = useMemo(() => {
+    const byId = new Map();
+    schoolsAdded.forEach((school) => byId.set(String(school.id), school));
+    localSchools.forEach((school) => byId.set(String(school.id), school));
+    return Array.from(byId.values());
+  }, [localSchools, schoolsAdded]);
+  const schoolsListMeta = schoolsList;
+  const schoolsListLoading = schoolsQuery.isLoading || schoolsQuery.isFetching;
+  const schoolsListError = schoolsQuery.error?.message || null;
+  const schoolsAddedCount = schoolsListMeta?.total ?? schoolsAdded.length;
   const schoolsTotalPages = Math.max(1, schoolsListMeta?.totalPages ?? 1);
   const listOffset =
     schoolsListMeta != null
       ? Math.max(0, (schoolsListMeta.page - 1) * schoolsListMeta.limit)
       : (schoolsPage - 1) * SCHOOLS_PAGE_SIZE;
-  const pagedSchoolsAdded = schoolsAdded;
+  const pagedSchoolsAdded = mergedSchoolsAdded;
+  const eventsQuery = useEventsQuery({ enabled: activeNav === 'events' });
+  const updateEventStatusMutation = useUpdateEventStatusMutation();
+  const eventsList = eventsQuery.data || [];
+  const eventsLoading = eventsQuery.isLoading || eventsQuery.isFetching;
+  const eventsError = eventsQuery.error?.message || null;
+  const [activationTargetEvent, setActivationTargetEvent] = useState(null);
+  const [activationForm, setActivationForm] = useState({ fromDate: '', toDate: '' });
 
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [showEditSchool, setShowEditSchool] = useState(false);
   const [editingSchoolId, setEditingSchoolId] = useState(null);
-  const [editSchoolForm, setEditSchoolForm] = useState({
-    name: '',
-    email: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    contactName: '',
-    contactPhone: '',
-    studentsCount: '',
-    hasBranches: false,
-    branchCode: '',
-  });
-  const [schoolForm, setSchoolForm] = useState({
-    name: '',
-    email: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    contactName: '',
-    contactPhone: '',
-    studentsCount: '',
-    hasBranches: false,
-    branchCode: '',
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    const page = activeNav === 'schools' ? schoolsPage : 1;
-    setSchoolsListLoading(true);
-    setSchoolsListError(null);
-    listSchools({ page, limit: SCHOOLS_PAGE_SIZE })
-      .then((r) => {
-        if (cancelled) return;
-        setSchoolsListMeta({
-          total: r.total,
-          page: r.page,
-          limit: r.limit,
-          totalPages: r.totalPages,
-        });
-        if (activeNav === 'schools') {
-          setSchoolsAdded(r.items);
-        }
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setSchoolsListError(e?.message || 'Failed to load schools');
-        if (activeNav === 'schools') {
-          setSchoolsAdded(getSchoolsAdded());
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setSchoolsListLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeNav, schoolsPage]);
+  const [editSchoolForm, setEditSchoolForm] = useState(INITIAL_SCHOOL_FORM);
+  const [schoolForm, setSchoolForm] = useState(INITIAL_SCHOOL_FORM);
+  const [schoolFormErrors, setSchoolFormErrors] = useState({});
+  const [editSchoolFormErrors, setEditSchoolFormErrors] = useState({});
+  const [schoolSubmitting, setSchoolSubmitting] = useState(false);
+  const [editSchoolSubmitting, setEditSchoolSubmitting] = useState(false);
 
   useEffect(() => {
     // If navigation passes a default tab, switch to it on mount / state change.
@@ -169,7 +166,7 @@ export default function AdminDashboard() {
     setSchoolsPage((p) => Math.min(p, Math.max(1, schoolsListMeta.totalPages)));
   }, [schoolsListMeta?.totalPages]);
 
-  const [promotersAdded, setPromotersAdded] = useState(getPromotersAdded());
+  const promotersAdded = useAppSelector(selectAllPromoters);
   const PROMOTERS_PAGE_SIZE = 10;
   const [promotersPage, setPromotersPage] = useState(1);
   const promotersTotalPages = Math.max(1, Math.ceil(promotersAdded.length / PROMOTERS_PAGE_SIZE));
@@ -191,70 +188,201 @@ export default function AdminDashboard() {
   }, [promotersAdded.length]);
 
   const [showAddPromoter, setShowAddPromoter] = useState(false);
-  const [promoterForm, setPromoterForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    referralCode: '',
-    promoCode: '',
-    instagramProfileLink: '',
-    youtubeProfileLink: '',
-  });
+  const [promoterForm, setPromoterForm] = useState(INITIAL_PROMOTER_FORM);
+  const [promoterFormErrors, setPromoterFormErrors] = useState({});
+  const [promoterSubmitting, setPromoterSubmitting] = useState(false);
 
-  const persistPromotersAdded = (list) => {
-    setPromotersAdded(list);
-    localStorage.setItem(PROMOTERS_KEY, JSON.stringify(list));
+  const PARTNERS_PAGE_SIZE = 10;
+  const [partnersPage, setPartnersPage] = useState(1);
+  const [partnersSearchInput, setPartnersSearchInput] = useState('');
+  const debouncedPartnersSearch = useDebouncedValue(partnersSearchInput, 400);
+  const [partnersStatusFilter, setPartnersStatusFilter] = useState('all');
+  const partnersStatusParam =
+    partnersStatusFilter === 'active'
+      ? true
+      : partnersStatusFilter === 'inactive'
+        ? false
+        : undefined;
+
+  const partnersListQuery = useSuperAdminsListQuery(
+    {
+      page: partnersPage,
+      limit: PARTNERS_PAGE_SIZE,
+      search: debouncedPartnersSearch,
+      status: partnersStatusParam,
+    },
+    { enabled: activeNav === 'partners' }
+  );
+  const createPartnerMutation = useCreateSuperAdminMutation();
+  const updatePartnerStatusMutation = useUpdateSuperAdminStatusMutation();
+  const resetPartnerPasswordMutation = useResetSuperAdminPasswordMutation();
+
+  const partnersListMeta = partnersListQuery.data || {
+    items: [],
+    total: 0,
+    page: 1,
+    limit: PARTNERS_PAGE_SIZE,
+    totalPages: 1,
   };
+  const partnersRows = partnersListMeta.items || [];
+  const partnersListLoading = partnersListQuery.isLoading || partnersListQuery.isFetching;
+  const partnersListError = partnersListQuery.error?.message || null;
+
+  const [showAddPartner, setShowAddPartner] = useState(false);
+  const [partnerForm, setPartnerForm] = useState(INITIAL_PARTNER_FORM);
+  const [partnerFormErrors, setPartnerFormErrors] = useState({});
+  const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetPasswordError, setResetPasswordError] = useState('');
+
+  useEffect(() => {
+    setPartnersPage(1);
+  }, [debouncedPartnersSearch, partnersStatusFilter]);
+
+  useEffect(() => {
+    const tp = partnersListMeta?.totalPages;
+    if (!tp) return;
+    setPartnersPage((p) => Math.min(p, Math.max(1, tp)));
+  }, [partnersListMeta?.totalPages]);
 
   const updatePromoterStatus = (id, nextStatus) => {
-    const updated = promotersAdded.map((p) =>
-      String(p.id) === String(id)
-        ? {
-            ...p,
-            status: nextStatus === 'inactive' ? 'inactive' : 'active',
-          }
-        : p
-    );
-    persistPromotersAdded(updated);
+    dispatch(updatePromoterStatusLocal({ id, status: nextStatus }));
+  };
+
+  const validatePromoterForm = (form) => {
+    const errors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const name = form.name?.trim();
+    const email = form.email?.trim();
+    const phoneRaw = form.phone?.trim().replace(/\s/g, '');
+    const pincode = form.pincode?.trim();
+
+    if (!name) errors.name = 'Promoter name is required.';
+    if (!email) errors.email = 'Promoter email is required.';
+    else if (!emailRegex.test(email)) errors.email = 'Enter a valid promoter email.';
+    if (!phoneRaw) errors.phone = 'Promoter phone is required.';
+    else if (!/^[6-9]\d{9}$/.test(phoneRaw)) errors.phone = 'Enter a valid 10-digit phone starting with 6-9.';
+    if (pincode && !/^\d{6}$/.test(pincode)) errors.pincode = 'Enter a valid 6-digit pincode.';
+
+    return errors;
+  };
+
+  /** Partners are super admin accounts (POST `/api/super-admins`). */
+  const validatePartnerForm = (form) => {
+    const errors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const name = form.name?.trim();
+    const mobileRaw = form.mobileNumber?.trim().replace(/\s/g, '');
+    const email = form.email?.trim();
+
+    if (!name) errors.name = 'Name is required.';
+    if (!mobileRaw) errors.mobileNumber = 'Mobile number is required.';
+    else if (!/^[6-9]\d{9}$/.test(mobileRaw)) {
+      errors.mobileNumber = 'Enter a valid 10-digit mobile number starting with 6-9.';
+    }
+    if (!email) errors.email = 'Email is required.';
+    else if (!emailRegex.test(email)) errors.email = 'Enter a valid email address.';
+
+    return errors;
+  };
+
+  const handleCreatePartner = async () => {
+    if (!canManageAdminData) {
+      notifyError('Only admin can add partners.');
+      return;
+    }
+    const errors = validatePartnerForm(partnerForm);
+    setPartnerFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    try {
+      await createPartnerMutation.mutateAsync({
+        name: partnerForm.name?.trim(),
+        email: partnerForm.email?.trim(),
+        mobileNumber: partnerForm.mobileNumber?.trim().replace(/\s/g, ''),
+      });
+      success('Partner account created. They will use the credentials your organization provides.');
+      setShowAddPartner(false);
+      setPartnerForm(INITIAL_PARTNER_FORM);
+      setPartnerFormErrors({});
+    } catch (e) {
+      notifyError(e?.message || 'Could not add partner.');
+    }
+  };
+
+  const handleTogglePartnerStatus = async (row, nextActive) => {
+    if (!canManageAdminData) {
+      notifyError('Only admin can change status.');
+      return;
+    }
+    try {
+      await updatePartnerStatusMutation.mutateAsync({
+        userId: row.id,
+        active: nextActive,
+      });
+      success(nextActive ? 'Partner activated.' : 'Partner deactivated.');
+    } catch (e) {
+      notifyError(e?.message || 'Could not update status.');
+    }
+  };
+
+  const handleSubmitResetPartnerPassword = async () => {
+    if (!canManageAdminData) {
+      notifyError('Only admin can reset password.');
+      return;
+    }
+    const pwd = resetPasswordValue?.trim() || '';
+    const strong = validateStrongPassword(pwd);
+    if (!strong.valid) {
+      setResetPasswordError(strong.error);
+      return;
+    }
+    setResetPasswordError('');
+    try {
+      await resetPartnerPasswordMutation.mutateAsync({
+        userId: resetPasswordTarget.id,
+        newPassword: pwd,
+      });
+      success('Password updated.');
+      setResetPasswordTarget(null);
+      setResetPasswordValue('');
+    } catch (e) {
+      notifyError(e?.message || 'Could not reset password.');
+    }
+  };
+
+  const validateSchoolForm = (form) => {
+    const errors = {};
+    const pincode = form.pincode?.trim();
+    const contactPhone = form.contactPhone?.trim().replace(/\s/g, '');
+    if (!form.name?.trim()) errors.name = 'School name is required.';
+    if (!form.address?.trim()) errors.address = 'Address is required.';
+    if (!form.city?.trim()) errors.city = 'City is required.';
+    if (!form.state?.trim()) errors.state = 'State is required.';
+    if (!pincode) errors.pincode = 'Pincode is required.';
+    else if (!/^\d{6}$/.test(pincode)) errors.pincode = 'Enter a valid 6-digit pincode.';
+    if (!form.contactName?.trim()) errors.contactName = 'Contact person name is required.';
+    if (!contactPhone) errors.contactPhone = 'Contact mobile number is required.';
+    else if (!/^[6-9]\d{9}$/.test(contactPhone)) errors.contactPhone = 'Enter a valid 10-digit number starting with 6-9.';
+    if (form.hasBranches && !form.branchCode?.trim()) errors.branchCode = 'Branch code is required when school has branches.';
+    return errors;
   };
 
   const handleAddPromoter = () => {
+    if (!canManageAdminData) {
+      notifyError('Super admin has view-only access for this screen.');
+      return;
+    }
+    const errors = validatePromoterForm(promoterForm);
+    setPromoterFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    setPromoterSubmitting(true);
     const name = promoterForm.name?.trim();
-    if (!name) {
-      alert('Please enter promoter name.');
-      return;
-    }
     const email = promoterForm.email?.trim();
-    if (!email) {
-      alert('Please enter promoter email.');
-      return;
-    }
-    // Basic email check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert('Please enter a valid promoter email.');
-      return;
-    }
-
     const phoneRaw = promoterForm.phone?.trim().replace(/\s/g, '');
-    if (!phoneRaw) {
-      alert('Please enter promoter phone.');
-      return;
-    }
-    if (!/^[6-9]\d{9}$/.test(phoneRaw)) {
-      alert('Please enter a valid 10-digit phone (starting with 6-9).');
-      return;
-    }
-
     const pincode = promoterForm.pincode?.trim();
-    if (pincode && !/^\d{6}$/.test(pincode)) {
-      alert('Please enter a valid 6-digit pincode (or leave blank).');
-      return;
-    }
 
     const newPromoter = {
       id: Date.now(),
@@ -273,102 +401,62 @@ export default function AdminDashboard() {
       addedAt: new Date().toISOString().slice(0, 10),
     };
 
-    persistPromotersAdded([newPromoter, ...promotersAdded]);
+    dispatch(addPromoterLocal(newPromoter));
     setShowAddPromoter(false);
-    setPromoterForm({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      referralCode: '',
-      promoCode: '',
-      instagramProfileLink: '',
-      youtubeProfileLink: '',
-    });
+    setPromoterForm(INITIAL_PROMOTER_FORM);
+    setPromoterFormErrors({});
+    setPromoterSubmitting(false);
   };
 
   const getPromoterTotalAddress = (p) =>
     [p.address, p.city, p.state, p.pincode].filter(Boolean).join(', ');
 
-  const handleLogout = () => {
-    clearSession();
+  const handleSidebarNavClick = (path) => {
+    if (path === 'quiz') {
+      navigate('/QuizCreator');
+      return;
+    }
+    if (path === 'profile') {
+      navigate('/profile');
+      return;
+    }
+    setActiveNav(path);
+  };
+
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     navigate('/');
   };
 
-  const persistSchoolsAdded = (list) => {
-    setSchoolsAdded(list);
-    localStorage.setItem(PROMOTER_SCHOOLS_KEY, JSON.stringify(list));
-  };
-
   const handleAddSchool = async () => {
-    const name = schoolForm.name?.trim();
-    if (!name) {
-      alert('Please enter school name.');
+    if (!canManageAdminData) {
+      notifyError('Super admin has view-only access for this screen.');
       return;
     }
+    const errors = validateSchoolForm(schoolForm);
+    setSchoolFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    setSchoolSubmitting(true);
+    const name = schoolForm.name?.trim();
 
     const studentsCountRaw = schoolForm.studentsCount?.toString().trim();
     let studentsCountValue = 0;
     if (studentsCountRaw) {
       const parsed = parseInt(studentsCountRaw, 10);
       if (Number.isNaN(parsed) || parsed < 0) {
-        alert('Number of students must be a valid number (0 or greater).');
+        setSchoolFormErrors((prev) => ({ ...prev, studentsCount: 'Number of students must be 0 or greater.' }));
+        setSchoolSubmitting(false);
         return;
       }
       studentsCountValue = parsed;
     }
 
     const address = schoolForm.address?.trim();
-    if (!address) {
-      alert('Please enter school address.');
-      return;
-    }
-
     const city = schoolForm.city?.trim();
-    if (!city) {
-      alert('Please enter city.');
-      return;
-    }
-
     const state = schoolForm.state?.trim();
-    if (!state) {
-      alert('Please enter state.');
-      return;
-    }
-
     const pincode = schoolForm.pincode?.trim();
-    if (!pincode) {
-      alert('Please enter pincode.');
-      return;
-    }
-    if (!/^\d{6}$/.test(pincode)) {
-      alert('Please enter a valid 6-digit pincode.');
-      return;
-    }
-
     const contactName = schoolForm.contactName?.trim();
-    if (!contactName) {
-      alert('Please enter contact person name.');
-      return;
-    }
-
-    if (schoolForm.hasBranches && !schoolForm.branchCode?.trim()) {
-      alert('Branch code is required when the school has branches.');
-      return;
-    }
-
     const contactPhone = schoolForm.contactPhone?.trim().replace(/\s/g, '');
-    if (!contactPhone) {
-      alert('Please enter contact mobile number.');
-       return;
-    }
-    if (!/^[6-9]\d{9}$/.test(contactPhone)) {
-      alert('Please enter a valid 10-digit mobile number starting with 6-9.');
-      return;
-    }
 
     const requestPayload = {
       name,
@@ -392,61 +480,91 @@ export default function AdminDashboard() {
       addedByPromoterId: null,
     };
 
-    let createOk = false;
     try {
-      const created = await createSchool(requestPayload, { userId: 1, userRole: 'admin' });
-      if (created && typeof created === 'object') {
-        Object.assign(newSchool, created);
-      }
-      createOk = true;
-    } catch (error) {
-      console.warn('Create school API failed, keeping local data fallback.', error);
-    }
-
-    if (createOk) {
-      try {
-        setSchoolsPage(1);
-        const refreshed = await listSchools({ page: 1, limit: SCHOOLS_PAGE_SIZE });
-        setSchoolsListMeta({
-          total: refreshed.total,
-          page: refreshed.page,
-          limit: refreshed.limit,
-          totalPages: refreshed.totalPages,
-        });
-        if (activeNav === 'schools') {
-          setSchoolsAdded(refreshed.items);
-        }
-      } catch (e) {
-        persistSchoolsAdded([newSchool, ...schoolsAdded]);
-      }
-    } else {
-      persistSchoolsAdded([newSchool, ...schoolsAdded]);
+      await createSchoolMutation.mutateAsync({ payload: requestPayload, userId: 1, userRole: 'admin' });
+      setSchoolsPage(1);
+      success('School created successfully.');
+    } catch {
+      setLocalSchools((previous) => [newSchool, ...previous]);
+      info('School saved locally. Sync will continue in background.');
     }
 
     setShowAddSchool(false);
-    setSchoolForm({
-      name: '',
-      email: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      contactName: '',
-      contactPhone: '',
-      studentsCount: '',
-      hasBranches: false,
-      branchCode: '',
+    setSchoolForm(INITIAL_SCHOOL_FORM);
+    setSchoolFormErrors({});
+    setSchoolSubmitting(false);
+  };
+
+  const handleDeleteSchool = async (id) => {
+    if (!isAdmin) {
+      notifyError('Only admin can delete schools.');
+      return;
+    }
+
+    const ok = window.confirm('Delete this school?');
+    if (!ok) return;
+
+    try {
+      await deleteSchoolMutation.mutateAsync({ schoolId: id, userRole: 'admin' });
+      setSchoolsPage(1);
+      success('School deleted successfully.');
+    } catch {
+      setLocalSchools((previous) => previous.filter((school) => school.id !== id));
+      info('Delete synced locally; server sync will retry.');
+    }
+  };
+
+  const handleUpdateEventStatus = async ({ eventId, nextStatus, fromDate, toDate }) => {
+    if (!isAdmin) {
+      notifyError('Only admin can update event status.');
+      return;
+    }
+    try {
+      await updateEventStatusMutation.mutateAsync({ eventId, status: nextStatus, fromDate, toDate });
+      success(`Event marked as ${nextStatus}.`);
+    } catch (error) {
+      notifyError(error?.message || 'Failed to update event status.');
+    }
+  };
+
+  const openActivationModal = (event) => {
+    setActivationTargetEvent(event);
+    setActivationForm({
+      fromDate: String(event?.fromDate ?? '').slice(0, 10),
+      toDate: String(event?.toDate ?? '').slice(0, 10),
     });
   };
 
-  const handleDeleteSchool = (id) => {
-    const ok = window.confirm('Delete this school?');
-    if (!ok) return;
-    const updated = schoolsAdded.filter((s) => String(s.id) !== String(id));
-    persistSchoolsAdded(updated);
+  const closeActivationModal = () => {
+    setActivationTargetEvent(null);
+    setActivationForm({ fromDate: '', toDate: '' });
+  };
+
+  const confirmActivation = async () => {
+    const fromDate = String(activationForm.fromDate || '').trim();
+    const toDate = String(activationForm.toDate || '').trim();
+    if (!fromDate || !toDate) {
+      notifyError('From date and To date are required to activate an event.');
+      return;
+    }
+    if (fromDate > toDate) {
+      notifyError('From date must be less than or equal to To date.');
+      return;
+    }
+    await handleUpdateEventStatus({
+      eventId: activationTargetEvent?.id,
+      nextStatus: 'active',
+      fromDate,
+      toDate,
+    });
+    closeActivationModal();
   };
 
   const openEditSchool = (school) => {
+    if (!canManageAdminData) {
+      notifyError('Super admin has view-only access for this screen.');
+      return;
+    }
     setEditingSchoolId(school.id);
     setEditSchoolForm({
       name: school.name || '',
@@ -461,120 +579,86 @@ export default function AdminDashboard() {
       hasBranches: Boolean(school.branchCode),
       branchCode: school.branchCode || '',
     });
+    setEditSchoolFormErrors({});
     setShowEditSchool(true);
   };
 
   const handleUpdateSchool = () => {
-    if (editingSchoolId === null) return;
-
-    const name = editSchoolForm.name?.trim();
-    if (!name) {
-      alert('Please enter school name.');
+    if (!canManageAdminData) {
+      notifyError('Super admin has view-only access for this screen.');
       return;
     }
+    if (editingSchoolId === null) return;
+    const errors = validateSchoolForm(editSchoolForm);
+    setEditSchoolFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    setEditSchoolSubmitting(true);
+    const name = editSchoolForm.name?.trim();
 
     const studentsCountRaw = editSchoolForm.studentsCount?.toString().trim();
     let studentsCountValue = 0;
     if (studentsCountRaw) {
       const parsed = parseInt(studentsCountRaw, 10);
       if (Number.isNaN(parsed) || parsed < 0) {
-        alert('Number of students must be a valid number (0 or greater).');
+        setEditSchoolFormErrors((prev) => ({ ...prev, studentsCount: 'Number of students must be 0 or greater.' }));
+        setEditSchoolSubmitting(false);
         return;
       }
       studentsCountValue = parsed;
     }
 
     const address = editSchoolForm.address?.trim();
-    if (!address) {
-      alert('Please enter school address.');
-      return;
-    }
-
     const city = editSchoolForm.city?.trim();
-    if (!city) {
-      alert('Please enter city.');
-      return;
-    }
-
     const state = editSchoolForm.state?.trim();
-    if (!state) {
-      alert('Please enter state.');
-      return;
-    }
-
     const pincode = editSchoolForm.pincode?.trim();
-    if (!pincode) {
-      alert('Please enter pincode.');
-      return;
-    }
-    if (!/^\d{6}$/.test(pincode)) {
-      alert('Please enter a valid 6-digit pincode.');
-      return;
-    }
-
     const contactName = editSchoolForm.contactName?.trim();
-    if (!contactName) {
-      alert('Please enter contact person name.');
-      return;
-    }
-
-    if (editSchoolForm.hasBranches && !editSchoolForm.branchCode?.trim()) {
-      alert('Branch code is required when the school has branches.');
-      return;
-    }
-
     const contactPhone = editSchoolForm.contactPhone?.trim().replace(/\s/g, '');
-    if (!contactPhone) {
-      alert('Please enter contact mobile number.');
-      return;
-    }
-    if (!/^[6-9]\d{9}$/.test(contactPhone)) {
-      alert('Please enter a valid 10-digit mobile number starting with 6-9.');
-      return;
-    }
 
-    const updated = schoolsAdded.map((s) =>
-      String(s.id) === String(editingSchoolId)
-        ? {
-            ...s,
-            name,
-            email: editSchoolForm.email?.trim() || '',
-            branchCode: editSchoolForm.hasBranches
-              ? editSchoolForm.branchCode?.trim() || ''
-              : '',
-            address,
-            city,
-            state,
-            pincode: pincode || '',
-            contactName,
-            contactPhone,
-            studentsCount: studentsCountValue,
-          }
-        : s
+    setLocalSchools((previous) =>
+      previous.map((school) =>
+        school.id === editingSchoolId
+          ? {
+              ...school,
+              name,
+              email: editSchoolForm.email?.trim() || '',
+              branchCode: editSchoolForm.hasBranches ? editSchoolForm.branchCode?.trim() || '' : '',
+              address,
+              city,
+              state,
+              pincode: pincode || '',
+              contactName,
+              contactPhone,
+              studentsCount: studentsCountValue,
+            }
+          : school
+      )
     );
-
-    persistSchoolsAdded(updated);
     setShowEditSchool(false);
     setEditingSchoolId(null);
+    setEditSchoolFormErrors({});
+    setEditSchoolSubmitting(false);
   };
 
   const updateSchoolStatus = (id, nextStatus) => {
-    const updated = schoolsAdded.map((s) =>
-      String(s.id) === String(id)
-        ? {
-            ...s,
-            status: nextStatus === 'inactive' ? 'inactive' : 'active',
-          }
-        : s
+    if (!canManageAdminData) {
+      notifyError('Only admin can update school status.');
+      return;
+    }
+
+    setLocalSchools((previous) =>
+      previous.map((school) =>
+        school.id === id ? { ...school, status: nextStatus === 'inactive' ? 'inactive' : 'active' } : school
+      )
     );
-    persistSchoolsAdded(updated);
   };
 
   const getTotalAddress = (s) =>
     [s.address, s.city, s.state, s.pincode].filter(Boolean).join(', ');
 
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 flex-col">
+      <div className="flex flex-1">
       {/* Sidebar */}
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
         <button
@@ -590,26 +674,35 @@ export default function AdminDashboard() {
           />
           <span className="text-xl font-bold text-blue-700">Alpha Vlogs</span>
         </button>
-        <nav className="flex-1 p-3 space-y-1">
+        <div className="px-4 pt-3">
+          <p className="mb-1 text-xs uppercase tracking-wide text-sky-700">Admin Panel</p>
+        </div>
+        <nav className="flex-1 p-3 space-y-2">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
-              onClick={() => setActiveNav(item.path)}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              onClick={() => handleSidebarNavClick(item.path)}
+              onMouseEnter={() => {
+                if (item.path === 'profile') prefetchByPath('/profile');
+                if (item.path === 'schools') prefetchByPath('/admin');
+                if (item.path === 'dashboard') prefetchByPath('/home');
+              }}
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-3 ${
                 activeNav === item.path
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-sky-700 text-white shadow-sm'
+                  : 'text-sky-900 hover:bg-sky-100'
               }`}
             >
-              <span>{item.icon}</span>
+              <item.icon className="h-4 w-4" aria-hidden="true" />
               {item.label}
             </button>
           ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
           <button
+            type="button"
             onClick={handleLogout}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="w-full rounded-lg bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
           >
             Logout
           </button>
@@ -641,32 +734,41 @@ export default function AdminDashboard() {
           />
           <span className="text-xl font-bold text-blue-700">Alpha Vlogs</span>
         </button>
-        <nav className="flex-1 p-3 space-y-1">
+        <div className="px-4 pt-3">
+          <p className="mb-1 text-xs uppercase tracking-wide text-sky-700">Admin Panel</p>
+        </div>
+        <nav className="flex-1 p-3 space-y-2">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
               onClick={() => {
-                setActiveNav(item.path);
+                handleSidebarNavClick(item.path);
                 setSidebarOpen(false);
               }}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              onMouseEnter={() => {
+                if (item.path === 'profile') prefetchByPath('/profile');
+                if (item.path === 'schools') prefetchByPath('/admin');
+                if (item.path === 'dashboard') prefetchByPath('/home');
+              }}
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-3 ${
                 activeNav === item.path
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-sky-700 text-white shadow-sm'
+                  : 'text-sky-900 hover:bg-sky-100'
               }`}
             >
-              <span>{item.icon}</span>
+              <item.icon className="h-4 w-4" aria-hidden="true" />
               {item.label}
             </button>
           ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
           <button
+            type="button"
             onClick={() => {
               setSidebarOpen(false);
               handleLogout();
             }}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="w-full rounded-lg bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
           >
             Logout
           </button>
@@ -703,6 +805,8 @@ export default function AdminDashboard() {
             {activeNav === 'events' && 'Events'}
             {activeNav === 'quiz' && 'Quiz'}
             {activeNav === 'promotors' && 'Promoters'}
+            {activeNav === 'influencers' && 'Influencers'}
+            {activeNav === 'partners' && 'Partners'}
             {activeNav === 'schools' && 'Schools'}
           </div>
           <div />
@@ -714,6 +818,8 @@ export default function AdminDashboard() {
           {activeNav === 'events' && 'Events'}
           {activeNav === 'quiz' && 'QUIZ'}
           {activeNav === 'promotors' && 'Promotors'}
+          {activeNav === 'influencers' && 'Influencers'}
+          {activeNav === 'partners' && 'Partners'}
           {activeNav === 'schools' && 'Schools'}
         </h1>
 
@@ -771,8 +877,127 @@ export default function AdminDashboard() {
         )}
 
         {activeNav === 'events' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-gray-500">
-            No events created yet.
+          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Event Name</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">From Date</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">To Date</th>
+                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Active</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventsLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-8 text-gray-500">
+                        Loading events...
+                      </td>
+                    </tr>
+                  ) : eventsError ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-8 text-red-600">
+                        {eventsError}
+                      </td>
+                    </tr>
+                  ) : eventsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-8 text-gray-500">
+                        No events available.
+                      </td>
+                    </tr>
+                  ) : (
+                    eventsList.map((event, idx) => {
+                      const isActive = event.status === 'active';
+                      return (
+                        <tr key={String(event.id)} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="px-5 py-4 whitespace-nowrap">{idx + 1}</td>
+                          <td className="px-5 py-4 text-gray-800 font-medium">{event.name || '-'}</td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <span className={`text-xs px-2 py-1 rounded ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                              {event.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                            {event.fromDate ? String(event.fromDate).slice(0, 10) : '-'}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                            {event.toDate ? String(event.toDate).slice(0, 10) : '-'}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={isActive}
+                                disabled={!isAdmin || updateEventStatusMutation.isPending}
+                                aria-label={`Set event ${event.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
+                                onChange={(e) => {
+                                  const nextStatus = e.target.checked ? 'active' : 'inactive';
+                                  if (nextStatus === 'active') {
+                                    openActivationModal(event);
+                                    return;
+                                  }
+                                  handleUpdateEventStatus({ eventId: event.id, nextStatus: 'inactive' });
+                                }}
+                              />
+                            </label>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activationTargetEvent && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Activate Event</h3>
+              <p className="text-sm text-gray-500 mb-4">{activationTargetEvent.name || 'Selected event'}</p>
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="text-sm text-gray-700">From Date</span>
+                  <input
+                    type="date"
+                    value={activationForm.fromDate}
+                    onChange={(e) => setActivationForm((prev) => ({ ...prev, fromDate: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm text-gray-700">To Date</span>
+                  <input
+                    type="date"
+                    value={activationForm.toDate}
+                    onChange={(e) => setActivationForm((prev) => ({ ...prev, toDate: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                  />
+                </label>
+              </div>
+              <div className="mt-5 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeActivationModal}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmActivation}
+                  disabled={updateEventStatusMutation.isPending}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Save & Activate
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -790,7 +1015,12 @@ export default function AdminDashboard() {
                 <p className="text-sm text-gray-500">Add a promoter (admin) and it will appear below.</p>
               </div>
               <button
-                onClick={() => setShowAddPromoter(true)}
+                onClick={() => {
+                  setPromoterForm(INITIAL_PROMOTER_FORM);
+                  setPromoterFormErrors({});
+                  if (canManageAdminData) setShowAddPromoter(true);
+                }}
+                disabled={!canManageAdminData}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
               >
                 Add Promoter
@@ -905,129 +1135,21 @@ export default function AdminDashboard() {
             )}
 
             {showAddPromoter && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 my-8">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-4">Add Promoter (Admin)</h3>
-
-                  <div className="space-y-3">
-                    <input
-                      value={promoterForm.name}
-                      onChange={(e) => setPromoterForm((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="Promoter name *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      value={promoterForm.email}
-                      onChange={(e) => setPromoterForm((prev) => ({ ...prev, email: e.target.value }))}
-                      placeholder="Email *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                    <input
-                      value={promoterForm.phone}
-                      onChange={(e) => setPromoterForm((prev) => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Phone (10 digits, 6-9 start) *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      maxLength={10}
-                    />
-                    <textarea
-                      value={promoterForm.address}
-                      onChange={(e) => setPromoterForm((prev) => ({ ...prev, address: e.target.value }))}
-                      placeholder="Address"
-                      rows={2}
-                      className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                    />
-
-                    <input
-                      value={promoterForm.instagramProfileLink}
-                      onChange={(e) =>
-                        setPromoterForm((prev) => ({
-                          ...prev,
-                          instagramProfileLink: e.target.value,
-                        }))
-                      }
-                      placeholder="Instagram profile link (optional)"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-
-                    <input
-                      value={promoterForm.youtubeProfileLink}
-                      onChange={(e) =>
-                        setPromoterForm((prev) => ({
-                          ...prev,
-                          youtubeProfileLink: e.target.value,
-                        }))
-                      }
-                      placeholder="YouTube profile link (optional)"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={promoterForm.city}
-                        onChange={(e) => setPromoterForm((prev) => ({ ...prev, city: e.target.value }))}
-                        placeholder="City"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                      <input
-                        value={promoterForm.state}
-                        onChange={(e) => setPromoterForm((prev) => ({ ...prev, state: e.target.value }))}
-                        placeholder="State"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-
-                    <input
-                      value={promoterForm.pincode}
-                      onChange={(e) => setPromoterForm((prev) => ({ ...prev, pincode: e.target.value }))}
-                      placeholder="Pincode (6 digits)"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      maxLength={6}
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={promoterForm.promoCode}
-                        onChange={(e) => setPromoterForm((prev) => ({ ...prev, promoCode: e.target.value }))}
-                        placeholder="Promo code (optional)"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                      <input
-                        value={promoterForm.referralCode}
-                        onChange={(e) => setPromoterForm((prev) => ({ ...prev, referralCode: e.target.value }))}
-                        placeholder="Referral code (optional)"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
-                    <button
-                      onClick={() => {
-                        setShowAddPromoter(false);
-                        setPromoterForm({
-                          name: '',
-                          email: '',
-                          phone: '',
-                          address: '',
-                          city: '',
-                          state: '',
-                          pincode: '',
-                          referralCode: '',
-                          promoCode: '',
-                          instagramProfileLink: '',
-                          youtubeProfileLink: '',
-                        });
-                      }}
-                      className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button onClick={handleAddPromoter} className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                      Add Promoter
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <Suspense fallback={<div className="fixed inset-0 z-40 bg-black/40" />}>
+                <AdminPromoterFormModal
+                value={promoterForm}
+                errors={promoterFormErrors}
+                submitting={promoterSubmitting}
+                onChange={(field, value) => setPromoterForm((prev) => ({ ...prev, [field]: value }))}
+                onCancel={() => {
+                  setShowAddPromoter(false);
+                  setPromoterForm(INITIAL_PROMOTER_FORM);
+                  setPromoterFormErrors({});
+                  setPromoterSubmitting(false);
+                }}
+                onSubmit={handleAddPromoter}
+                />
+              </Suspense>
             )}
           </div>
         )}
@@ -1041,7 +1163,12 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowAddSchool(true)}
+                  onClick={() => {
+                    setSchoolForm(INITIAL_SCHOOL_FORM);
+                    setSchoolFormErrors({});
+                    if (canManageAdminData) setShowAddSchool(true);
+                  }}
+                  disabled={!canManageAdminData}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
                 >
                   Add School
@@ -1148,12 +1275,13 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
                               <label className="flex items-center gap-2 cursor-pointer text-gray-700">
-                                <input
-                                  type="checkbox"
-                                  checked={isActive}
-                                  aria-label={`Set school ${s.name} status to ${isActive ? 'inactive' : 'active'}`}
-                                  onChange={(e) => updateSchoolStatus(s.id, e.target.checked ? 'active' : 'inactive')}
-                                />
+                                  <input
+                                    type="checkbox"
+                                    checked={isActive}
+                                    disabled={!canManageAdminData}
+                                    aria-label={`Set school ${s.name} status to ${isActive ? 'inactive' : 'active'}`}
+                                    onChange={(e) => updateSchoolStatus(s.id, e.target.checked ? 'active' : 'inactive')}
+                                  />
                               </label>
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
@@ -1178,29 +1306,31 @@ export default function AdminDashboard() {
                                     <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
                                   </svg>
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteSchool(s.id)}
-                                  aria-label={`Delete school ${s.name || ''}`}
-                                  className="p-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="w-4 h-4 text-red-700"
+                                {canManageAdminData && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSchool(s.id)}
+                                    aria-label={`Delete school ${s.name || ''}`}
+                                    className="p-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100"
                                   >
-                                    <path d="M3 6h18" />
-                                    <path d="M8 6V4h8v2" />
-                                    <path d="M19 6l-1 14H6L5 6" />
-                                    <path d="M10 11v6" />
-                                    <path d="M14 11v6" />
-                                  </svg>
-                                </button>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="w-4 h-4 text-red-700"
+                                    >
+                                      <path d="M3 6h18" />
+                                      <path d="M8 6V4h8v2" />
+                                      <path d="M19 6l-1 14H6L5 6" />
+                                      <path d="M10 11v6" />
+                                      <path d="M14 11v6" />
+                                    </svg>
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1236,295 +1366,357 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {showAddSchool && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 my-8">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-4">Add School (Admin)</h3>
+            {showAddSchool && canManageAdminData && (
+              <Suspense fallback={<div className="fixed inset-0 z-40 bg-black/40" />}>
+                <AdminSchoolFormModal
+                title="Add School (Admin)"
+                value={schoolForm}
+                errors={schoolFormErrors}
+                submitLabel="Add School"
+                submitting={schoolSubmitting}
+                onChange={(field, value) => setSchoolForm((prev) => ({ ...prev, [field]: value }))}
+                onCancel={() => {
+                  setShowAddSchool(false);
+                  setSchoolForm(INITIAL_SCHOOL_FORM);
+                  setSchoolFormErrors({});
+                  setSchoolSubmitting(false);
+                }}
+                onSubmit={handleAddSchool}
+                />
+              </Suspense>
+            )}
 
-                  <div className="space-y-3">
-                    <input
-                      value={schoolForm.name}
-                      onChange={(e) => setSchoolForm((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="School name *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      required
-                    />
-                    <input
-                      value={schoolForm.email}
-                      onChange={(e) => setSchoolForm((prev) => ({ ...prev, email: e.target.value }))}
-                      placeholder="Email (optional)"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                    <textarea
-                      value={schoolForm.address}
-                      onChange={(e) => setSchoolForm((prev) => ({ ...prev, address: e.target.value }))}
-                      placeholder="Address"
-                      rows={2}
-                      className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                      required
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={schoolForm.city}
-                        onChange={(e) => setSchoolForm((prev) => ({ ...prev, city: e.target.value }))}
-                        placeholder="City"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                      <input
-                        value={schoolForm.state}
-                        onChange={(e) => setSchoolForm((prev) => ({ ...prev, state: e.target.value }))}
-                        placeholder="State"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={schoolForm.pincode}
-                        onChange={(e) => setSchoolForm((prev) => ({ ...prev, pincode: e.target.value }))}
-                        placeholder="Pincode (6 digits)"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        maxLength={6}
-                        required
-                        inputMode="numeric"
-                      />
-                      <input
-                        value={schoolForm.contactName}
-                        onChange={(e) => setSchoolForm((prev) => ({ ...prev, contactName: e.target.value }))}
-                        placeholder="Contact person name"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    </div>
-                    <input
-                      value={schoolForm.contactPhone}
-                      onChange={(e) => setSchoolForm((prev) => ({ ...prev, contactPhone: e.target.value }))}
-                      placeholder="Contact mobile (mandatory) *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      type="tel"
-                      required
-                      maxLength={10}
-                    />
+            {showEditSchool && canManageAdminData && (
+              <Suspense fallback={<div className="fixed inset-0 z-40 bg-black/40" />}>
+                <AdminSchoolFormModal
+                title="Edit School"
+                value={editSchoolForm}
+                errors={editSchoolFormErrors}
+                submitLabel="Save Changes"
+                submitting={editSchoolSubmitting}
+                onChange={(field, value) => setEditSchoolForm((prev) => ({ ...prev, [field]: value }))}
+                onCancel={() => {
+                  setShowEditSchool(false);
+                  setEditingSchoolId(null);
+                  setEditSchoolForm(INITIAL_SCHOOL_FORM);
+                  setEditSchoolFormErrors({});
+                  setEditSchoolSubmitting(false);
+                }}
+                onSubmit={handleUpdateSchool}
+                />
+              </Suspense>
+            )}
+          </div>
+        )}
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Does the school have branches?</label>
-                      <div className="flex gap-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="hasBranches"
-                            checked={schoolForm.hasBranches === true}
-                            onChange={() => setSchoolForm((prev) => ({ ...prev, hasBranches: true }))}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Yes</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="hasBranches"
-                            checked={schoolForm.hasBranches === false}
-                            onChange={() => setSchoolForm((prev) => ({ ...prev, hasBranches: false }))}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>No</span>
-                        </label>
-                      </div>
-                    </div>
+        {activeNav === 'influencers' && (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Influencers</h2>
+                <p className="text-sm text-gray-500">Manage influencer records from this section.</p>
+              </div>
+              <button
+                type="button"
+                disabled={!canManageAdminData}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (!canManageAdminData) notifyError('Only admin can add influencers.');
+                }}
+              >
+                Add Influencer
+              </button>
+            </div>
+            <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-gray-500">
+              No influencers added yet.
+            </div>
+          </div>
+        )}
 
-                    {schoolForm.hasBranches && (
-                      <input
-                        value={schoolForm.branchCode}
-                        onChange={(e) => setSchoolForm((prev) => ({ ...prev, branchCode: e.target.value }))}
-                        placeholder="Branch code *"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    )}
+        {activeNav === 'partners' && (
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Partners</h2>
+                <p className="text-sm text-gray-500">
+                  Partners have super admin–level access. Account credentials are never shown here.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!canManageAdminData}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                onClick={() => {
+                  if (!canManageAdminData) {
+                    notifyError('Only admin can add partners.');
+                    return;
+                  }
+                  setPartnerForm(INITIAL_PARTNER_FORM);
+                  setPartnerFormErrors({});
+                  setShowAddPartner(true);
+                }}
+              >
+                Add Partner
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Search</label>
+                <FormInput
+                  type="search"
+                  value={partnersSearchInput}
+                  onChange={(e) => setPartnersSearchInput(e.target.value)}
+                  placeholder="Name, email, or mobile"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select
+                  value={partnersStatusFilter}
+                  onChange={(e) => setPartnersStatusFilter(e.target.value)}
+                  className="w-full sm:w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 bg-white"
+                >
+                  <option value="all">All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            {partnersListError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                {partnersListError}
+              </div>
+            )}
+
+            {partnersListLoading && partnersRows.length === 0 ? (
+              <div className="bg-white rounded-xl shadow border border-gray-100 p-8 text-center text-gray-500">
+                Loading…
+              </div>
+            ) : partnersRows.length === 0 ? (
+              <div className="bg-white rounded-xl shadow border border-gray-100 p-8 text-center text-gray-500">
+                No partners found.
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-700">
+                      <tr>
+                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
+                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Name</th>
+                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Email</th>
+                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile</th>
+                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                        {canManageAdminData && (
+                          <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Actions</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnersRows.map((row, idx) => {
+                        const globalIndex =
+                          (partnersListMeta.page - 1) * (partnersListMeta.limit || PARTNERS_PAGE_SIZE) +
+                          idx +
+                          1;
+                        return (
+                          <tr key={String(row.id)} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="px-5 py-4 whitespace-nowrap">{globalIndex}</td>
+                            <td className="px-5 py-4 font-medium text-gray-800">{row.name}</td>
+                            <td className="px-5 py-4 text-gray-700">{row.email}</td>
+                            <td className="px-5 py-4 whitespace-nowrap text-gray-700">{row.mobileNumber}</td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  row.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {row.active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            {canManageAdminData && (
+                              <td className="px-5 py-4 whitespace-nowrap">
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      updatePartnerStatusMutation.isPending ||
+                                      resetPartnerPasswordMutation.isPending
+                                    }
+                                    className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+                                    onClick={() => handleTogglePartnerStatus(row, !row.active)}
+                                  >
+                                    {row.active ? 'Deactivate' : 'Activate'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      updatePartnerStatusMutation.isPending ||
+                                      resetPartnerPasswordMutation.isPending
+                                    }
+                                    className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-50"
+                                    onClick={() => {
+                                      setResetPasswordTarget({ id: row.id, name: row.name });
+                                      setResetPasswordValue('');
+                                      setResetPasswordError('');
+                                    }}
+                                  >
+                                    Reset password
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {partnersListMeta.totalPages > 1 && (
+                  <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/80">
+                    <p className="text-xs text-gray-600">
+                      Page {partnersListMeta.page} of {partnersListMeta.totalPages} (
+                      {partnersListMeta.total} total)
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={partnersPage <= 1 || partnersListLoading}
+                        onClick={() => setPartnersPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          partnersPage >= partnersListMeta.totalPages || partnersListLoading
+                        }
+                        onClick={() =>
+                          setPartnersPage((p) => Math.min(partnersListMeta.totalPages, p + 1))
+                        }
+                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
+                )}
+              </div>
+            )}
 
-                  <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
+            {showAddPartner && (
+              <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Partner</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Creates a partner account with elevated access. The user receives credentials through your
+                    secure provisioning flow (not in this app).
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                      <FormInput
+                        type="text"
+                        value={partnerForm.name}
+                        onChange={(e) => setPartnerForm((prev) => ({ ...prev, name: e.target.value }))}
+                        error={partnerFormErrors.name}
+                        placeholder="Full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                      <FormInput
+                        type="email"
+                        value={partnerForm.email}
+                        onChange={(e) => setPartnerForm((prev) => ({ ...prev, email: e.target.value }))}
+                        error={partnerFormErrors.email}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mobile number *
+                      </label>
+                      <FormInput
+                        type="tel"
+                        value={partnerForm.mobileNumber}
+                        onChange={(e) =>
+                          setPartnerForm((prev) => ({ ...prev, mobileNumber: e.target.value }))
+                        }
+                        error={partnerFormErrors.mobileNumber}
+                        placeholder="10-digit mobile"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-6 flex items-center justify-end gap-3">
                     <button
+                      type="button"
                       onClick={() => {
-                        setShowAddSchool(false);
-                        setSchoolForm({
-                          name: '',
-                          email: '',
-                          address: '',
-                          city: '',
-                          state: '',
-                          pincode: '',
-                          contactName: '',
-                          contactPhone: '',
-                          studentsCount: '',
-                          hasBranches: false,
-                          branchCode: '',
-                        });
+                        setShowAddPartner(false);
+                        setPartnerForm(INITIAL_PARTNER_FORM);
+                        setPartnerFormErrors({});
                       }}
-                      className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
                     >
                       Cancel
                     </button>
-                    <button onClick={handleAddSchool} className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                      Add School
+                    <button
+                      type="button"
+                      onClick={handleCreatePartner}
+                      disabled={createPartnerMutation.isPending}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {createPartnerMutation.isPending ? 'Saving…' : 'Create'}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {showEditSchool && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 my-8">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-4">Edit School</h3>
-
-                  <div className="space-y-3">
-                    <input
-                      value={editSchoolForm.name}
-                      onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="School name *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      required
-                    />
-
-                    <input
-                      value={editSchoolForm.email}
-                      onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, email: e.target.value }))}
-                      placeholder="Email (optional)"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-
-                    <textarea
-                      value={editSchoolForm.address}
-                      onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, address: e.target.value }))}
-                      placeholder="Address"
-                      rows={2}
-                      className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                      required
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={editSchoolForm.city}
-                        onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, city: e.target.value }))}
-                        placeholder="City"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                      <input
-                        value={editSchoolForm.state}
-                        onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, state: e.target.value }))}
-                        placeholder="State"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        value={editSchoolForm.pincode}
-                        onChange={(e) => setEditSchoolForm((prev) => ({ ...prev, pincode: e.target.value }))}
-                        placeholder="Pincode (6 digits)"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        maxLength={6}
-                        required
-                        inputMode="numeric"
-                      />
-                      <input
-                        value={editSchoolForm.contactName}
-                        onChange={(e) =>
-                          setEditSchoolForm((prev) => ({ ...prev, contactName: e.target.value }))
-                        }
-                        placeholder="Contact person name"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    </div>
-
-                    <input
-                      value={editSchoolForm.contactPhone}
-                      onChange={(e) =>
-                        setEditSchoolForm((prev) => ({ ...prev, contactPhone: e.target.value }))
-                      }
-                      placeholder="Contact mobile (mandatory) *"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      type="tel"
-                      required
-                      maxLength={10}
-                    />
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Does the school have branches?
-                      </label>
-                      <div className="flex gap-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="hasBranches"
-                            checked={editSchoolForm.hasBranches === true}
-                            onChange={() => setEditSchoolForm((prev) => ({ ...prev, hasBranches: true }))}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>Yes</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="hasBranches"
-                            checked={editSchoolForm.hasBranches === false}
-                            onChange={() =>
-                              setEditSchoolForm((prev) => ({ ...prev, hasBranches: false }))
-                            }
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span>No</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {editSchoolForm.hasBranches && (
-                      <input
-                        value={editSchoolForm.branchCode}
-                        onChange={(e) =>
-                          setEditSchoolForm((prev) => ({ ...prev, branchCode: e.target.value }))
-                        }
-                        placeholder="Branch code *"
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        required
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
-                    <button
-                      onClick={() => {
-                        setShowEditSchool(false);
-                        setEditingSchoolId(null);
-                        setEditSchoolForm({
-                          name: '',
-                          email: '',
-                          address: '',
-                          city: '',
-                          state: '',
-                          pincode: '',
-                          contactName: '',
-                          contactPhone: '',
-                          studentsCount: '',
-                          hasBranches: false,
-                          branchCode: '',
-                        });
+            {resetPasswordTarget && (
+              <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">Reset password</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    New password for <span className="font-medium text-gray-800">{resetPasswordTarget.name}</span>.{' '}
+                    {PASSWORD_REQUIREMENTS_SUMMARY}
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                    <FormInput
+                      type="password"
+                      value={resetPasswordValue}
+                      onChange={(e) => {
+                        setResetPasswordValue(e.target.value);
+                        if (resetPasswordError) setResetPasswordError('');
                       }}
-                      className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      error={resetPasswordError}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="mt-6 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetPasswordTarget(null);
+                        setResetPasswordValue('');
+                        setResetPasswordError('');
+                      }}
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={handleUpdateSchool}
-                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      type="button"
+                      onClick={handleSubmitResetPartnerPassword}
+                      disabled={resetPartnerPasswordMutation.isPending}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                      Save Changes
+                      {resetPartnerPasswordMutation.isPending ? 'Saving…' : 'Update password'}
                     </button>
                   </div>
                 </div>
@@ -1533,6 +1725,7 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 }

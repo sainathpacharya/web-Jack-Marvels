@@ -71,28 +71,61 @@
 // export default Login;
 
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bgImage from '../assets/images/bg.jpg';
-import { login as apiLogin } from '../api/auth';
-import { setSession } from '../auth/session';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { loginThunk } from '../store/slices/authSlice';
+import {
+  selectAuthError,
+  selectAuthStatus,
+  selectIsAuthenticated,
+  selectMustChangePassword,
+  selectRoleId,
+} from '../store/selectors/authSelectors';
+import { ROLE_IDS } from '../auth/session';
 
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const roleId = useAppSelector(selectRoleId);
+  const authStatus = useAppSelector(selectAuthStatus);
+  const authError = useAppSelector(selectAuthError);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const mustChangePassword = useAppSelector(selectMustChangePassword);
 
   const getDashboardPath = (roleId) => {
     // Routing is controlled ONLY by roleId.
     const id = roleId == null ? null : Number(roleId);
     switch (id) {
-      case 1:
-        return '/home';
+      case ROLE_IDS.ADMIN:
+        return '/admin';
+      case ROLE_IDS.SUPER_ADMIN:
+        return '/super-admin';
+      case ROLE_IDS.SCHOOL:
+        return '/school';
+      case ROLE_IDS.PROMOTOR:
+      case ROLE_IDS.INFLUENCER:
+        return '/promoter';
+      case ROLE_IDS.STUDENT:
+        // Students should not access the web app.
+        return '/';
       default:
-        // TODO: add future roleId routing here.
-        return '/home';
+        // Unknown roleId: send to public landing page to avoid showing admin UI.
+        return '/';
     }
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !roleId) return;
+    if (mustChangePassword) {
+      navigate('/change-password', { replace: true });
+      return;
+    }
+    navigate(getDashboardPath(roleId), { replace: true });
+  }, [isAuthenticated, roleId, mustChangePassword, navigate]);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -100,36 +133,9 @@ function Login() {
       return;
     }
 
-    try {
-      const auth = await apiLogin({ username: username.trim(), password });
-      const user = auth?.me ?? auth?.user ?? auth?.profile ?? auth;
-
-      const accessToken =
-        auth?.accessToken ??
-        auth?.token ??
-        auth?.access_token ??
-        user?.accessToken ??
-        user?.token ??
-        user?.access_token ??
-        '';
-      const refreshToken =
-        auth?.refreshToken ??
-        auth?.refresh_token ??
-        user?.refreshToken ??
-        user?.refresh_token ??
-        '';
-
-      // Store user for Home page / role-based rendering.
-      // `role` is treated as UI-only display value (secondary to roleId).
-      const userForStorage = { ...user, role: user?.roleName };
-      localStorage.setItem('user', JSON.stringify(userForStorage));
-
-      setSession({ accessToken, refreshToken, me: userForStorage });
-      alert('Login successful!');
-      navigate(getDashboardPath(userForStorage?.roleId));
-    } catch (error) {
-      console.error('Login error:', error);
-      alert(error?.message || 'Something went wrong. Please try again later.');
+    const action = await dispatch(loginThunk({ username, password }));
+    if (!loginThunk.fulfilled.match(action)) {
+      alert(action.payload || 'Something went wrong. Please try again later.');
     }
   };
 
@@ -162,17 +168,19 @@ function Login() {
         />
         <button
           onClick={handleLogin}
+          disabled={authStatus === 'loading'}
           className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold"
         >
-          Sign In
+          {authStatus === 'loading' ? 'Signing In...' : 'Sign In'}
         </button>
+        {authError ? <p className="mt-3 text-sm text-red-600">{authError}</p> : null}
         <p className="mt-6 text-sm text-center">
-          Don’t have an account?{' '}
+          Create an account?{' '}
           <span
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/Register')}
             className="text-green-700 underline font-semibold cursor-pointer"
           >
-            Register Now
+            Register
           </span>
         </p>
       </div>

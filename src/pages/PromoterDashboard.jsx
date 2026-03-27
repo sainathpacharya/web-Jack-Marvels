@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { STATIC_SCHOOLS_ADDED, STATIC_PROMOTER_HISTORY } from '../data/staticData';
-import { clearSession, getMe } from '../auth/session';
-import { createSchool, listSchools } from '../api/schools';
+import { STATIC_PROMOTER_HISTORY } from '../data/staticData';
+import { getMe, ROLE_IDS } from '../auth/session';
+import AppHeader from '../components/AppHeader';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logoutThunk } from '../store/slices/authSlice';
+import { selectRoleId } from '../store/selectors/authSelectors';
+import { useCreateSchoolMutation, useInfiniteSchoolsQuery } from '../features/schools/hooks/useSchoolsQuery';
+import { useNotifications } from '../components/notifications/NotificationProvider';
+import useNavigationPrefetch from '../hooks/useNavigationPrefetch';
 
 const SIDEBAR_ITEMS = [
   { label: 'Dashboard', path: 'dashboard' },
@@ -45,20 +51,42 @@ const isSchoolActive = (school) => (school.status || 'active') === 'active';
 
 export default function PromoterDashboard() {
   const navigate = useNavigate();
+  const { success, error: notifyError, info } = useNotifications();
+  const { prefetchByPath } = useNavigationPrefetch();
+  const dispatch = useAppDispatch();
+  const userRoleId = useAppSelector(selectRoleId);
+  const isInfluencer = Number(userRoleId) === ROLE_IDS.INFLUENCER;
+  const roleTitle = isInfluencer ? 'INFLUENCER' : 'PROMOTER';
+
+  useEffect(() => {
+    // RoleId 4 == Student: no access to the web application.
+    if (Number(userRoleId) === ROLE_IDS.STUDENT) {
+      dispatch(logoutThunk());
+      navigate('/');
+    }
+  }, [dispatch, userRoleId, navigate]);
+
   const [activeNav, setActiveNav] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [schoolsAdded, setSchoolsAdded] = useState([]);
-  const [schoolsListMeta, setSchoolsListMeta] = useState(null);
-  const [schoolsListLoading, setSchoolsListLoading] = useState(false);
-  const [schoolsListError, setSchoolsListError] = useState(null);
   const SCHOOLS_PAGE_SIZE = 10;
-  const [schoolsPage, setSchoolsPage] = useState(1);
-  const schoolsTotalPages = Math.max(1, schoolsListMeta?.totalPages ?? 1);
-  const listOffset =
-    schoolsListMeta != null
-      ? Math.max(0, (schoolsListMeta.page - 1) * schoolsListMeta.limit)
-      : (schoolsPage - 1) * SCHOOLS_PAGE_SIZE;
-  const pagedSchoolsAdded = schoolsAdded;
+  const [localSchools, setLocalSchools] = useState([]);
+  const schoolQuery = { scope: 'promoter', limit: SCHOOLS_PAGE_SIZE };
+  const schoolsQuery = useInfiniteSchoolsQuery({ ...schoolQuery, fallbackToStatic: true });
+  const createSchoolMutation = useCreateSchoolMutation();
+  const schoolsPages = schoolsQuery.data?.pages || [];
+  const schoolsAdded = schoolsPages.flatMap((page) => page.items || []);
+  const mergedSchools = useMemo(() => {
+    const byId = new Map();
+    schoolsAdded.forEach((school) => byId.set(String(school.id), school));
+    localSchools.forEach((school) => byId.set(String(school.id), school));
+    return Array.from(byId.values());
+  }, [localSchools, schoolsAdded]);
+  const schoolsListMeta = schoolsPages[schoolsPages.length - 1] || { totalPages: 1, page: 1, limit: SCHOOLS_PAGE_SIZE };
+  const schoolsListLoading = schoolsQuery.isLoading || schoolsQuery.isFetching;
+  const schoolsListError = schoolsQuery.error?.message || null;
+  const schoolsTotalPages = Math.max(1, schoolsPages[0]?.totalPages ?? 1);
+  const listOffset = 0;
+  const pagedSchoolsAdded = mergedSchools;
 
   const twoLineEllipsisStyle = {
     display: '-webkit-box',
@@ -69,45 +97,8 @@ export default function PromoterDashboard() {
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [schoolForm, setSchoolForm] = useState(initialSchoolForm());
 
-  useEffect(() => {
-    if (activeNav !== 'dashboard') return;
-    let cancelled = false;
-    setSchoolsListLoading(true);
-    setSchoolsListError(null);
-    listSchools({ page: schoolsPage, limit: SCHOOLS_PAGE_SIZE })
-      .then((r) => {
-        if (cancelled) return;
-        setSchoolsListMeta({
-          total: r.total,
-          page: r.page,
-          limit: r.limit,
-          totalPages: r.totalPages,
-        });
-        setSchoolsAdded(r.items);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setSchoolsListError(e?.message || 'Failed to load schools');
-        const fallback = getPromoterSchools();
-        setSchoolsAdded(
-          fallback.length > 0 ? fallback : [...STATIC_SCHOOLS_ADDED]
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setSchoolsListLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeNav, schoolsPage]);
-
-  useEffect(() => {
-    if (!schoolsListMeta?.totalPages) return;
-    setSchoolsPage((p) => Math.min(p, Math.max(1, schoolsListMeta.totalPages)));
-  }, [schoolsListMeta?.totalPages]);
-
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     navigate('/');
   };
 
@@ -118,47 +109,47 @@ export default function PromoterDashboard() {
   const handleAddSchool = async () => {
     const name = schoolForm.name?.trim();
     if (!name) {
-      alert('Please enter school name.');
+      notifyError('Please enter school name.');
       return;
     }
     if (!schoolForm.address?.trim()) {
-      alert('Please enter address.');
+      notifyError('Please enter address.');
       return;
     }
     if (!schoolForm.city?.trim()) {
-      alert('Please enter city.');
+      notifyError('Please enter city.');
       return;
     }
     if (!schoolForm.state?.trim()) {
-      alert('Please enter state.');
+      notifyError('Please enter state.');
       return;
     }
     const pincode = schoolForm.pincode?.trim();
     if (!pincode) {
-      alert('Please enter pincode.');
+      notifyError('Please enter pincode.');
       return;
     }
     if (!/^\d{6}$/.test(pincode)) {
-      alert('Please enter a valid 6-digit pincode.');
+      notifyError('Please enter a valid 6-digit pincode.');
       return;
     }
     if (!schoolForm.contactName?.trim()) {
-      alert('Please enter contact person name.');
+      notifyError('Please enter contact person name.');
       return;
     }
     const contactPhone = schoolForm.contactPhone?.trim().replace(/\s/g, '');
     if (!contactPhone) {
-      alert('Please enter mobile number.');
+      notifyError('Please enter mobile number.');
       return;
     }
     if (!MOBILE_REGEX.test(contactPhone)) {
-      alert('Please enter a valid 10-digit mobile number (starting with 6, 7, 8 or 9).');
+      notifyError('Please enter a valid 10-digit mobile number (starting with 6, 7, 8 or 9).');
       return;
     }
     if (schoolForm.hasBranches) {
       const branchCode = schoolForm.branchCode?.trim();
       if (!branchCode) {
-        alert('Branch code is required when school has branches.');
+        notifyError('Branch code is required when school has branches.');
         return;
       }
     }
@@ -184,51 +175,31 @@ export default function PromoterDashboard() {
       addedByPromoterId: promoterId,
     };
 
-    let createOk = false;
     try {
-      const created = await createSchool(requestPayload, { userId: promoterId, userRole: 'promoter' });
-      if (created && typeof created === 'object') {
-        Object.assign(school, created);
-      }
-      createOk = true;
-    } catch (error) {
-      console.warn('Create school API failed, keeping local data fallback.', error);
-    }
-
-    if (createOk) {
-      try {
-        setSchoolsPage(1);
-        const refreshed = await listSchools({ page: 1, limit: SCHOOLS_PAGE_SIZE });
-        setSchoolsListMeta({
-          total: refreshed.total,
-          page: refreshed.page,
-          limit: refreshed.limit,
-          totalPages: refreshed.totalPages,
-        });
-        setSchoolsAdded(refreshed.items);
-      } catch (e) {
-        setSchoolsAdded([school, ...schoolsAdded]);
-        savePromoterSchool(school);
-      }
-    } else {
-      setSchoolsAdded([...schoolsAdded, school]);
+      await createSchoolMutation.mutateAsync({ payload: requestPayload, userId: promoterId, userRole: 'promoter' });
+      success('School created successfully');
+    } catch {
+      setLocalSchools((previous) => [school, ...previous]);
       savePromoterSchool(school);
+      info('School saved locally. Sync will continue in background.');
     }
     setSchoolForm(initialSchoolForm());
     setShowAddSchool(false);
   };
 
   // History: from schools added (newest first) then static entries
-  const historyFromSchools = schoolsAdded
+  const historyFromSchools = mergedSchools
     .map((s) => ({ id: s.id, action: 'Added school', name: s.name, date: s.addedAt }))
     .sort((a, b) => (b.date > a.date ? 1 : -1));
-  const historyEntries = [...historyFromSchools, ...STATIC_PROMOTER_HISTORY.filter((h) => !schoolsAdded.some((s) => s.name === h.name && s.addedAt === h.date))];
+  const historyEntries = [...historyFromSchools, ...STATIC_PROMOTER_HISTORY.filter((h) => !mergedSchools.some((s) => s.name === h.name && s.addedAt === h.date))];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-[#fff7e8] flex-col">
+      <AppHeader onLogout={handleLogout} theme="promoter" />
+      <div className="flex flex-1">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
-        <div className="p-5 border-b border-gray-100">
+      <aside className="hidden md:flex w-56 bg-[#ffe6b3] border-r border-amber-200 shadow-sm flex-col">
+        <div className="p-5 border-b border-amber-200">
           <span className="text-2xl font-bold text-amber-700">JACK</span>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -236,22 +207,18 @@ export default function PromoterDashboard() {
             <button
               key={item.path}
               onClick={() => setActiveNav(item.path)}
+              onMouseEnter={() => {
+                if (item.path === 'dashboard') prefetchByPath('/promoter');
+              }}
               className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
-                activeNav === item.path ? 'bg-amber-100 text-amber-800' : 'text-gray-600 hover:bg-gray-100'
+                activeNav === item.path ? 'bg-amber-200 text-amber-900' : 'text-gray-700 hover:bg-amber-100'
               }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            Logout
-          </button>
-        </div>
+        <div className="p-3 border-t border-gray-100" />
       </aside>
 
       {sidebarOpen && (
@@ -262,11 +229,11 @@ export default function PromoterDashboard() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-56 bg-[#ffe6b3] border-r border-amber-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-gray-100">
+        <div className="p-5 border-b border-amber-200">
           <span className="text-2xl font-bold text-amber-700">JACK</span>
         </div>
         <nav className="flex-1 p-3 space-y-1">
@@ -277,10 +244,13 @@ export default function PromoterDashboard() {
                 setActiveNav(item.path);
                 setSidebarOpen(false);
               }}
+              onMouseEnter={() => {
+                if (item.path === 'dashboard') prefetchByPath('/promoter');
+              }}
               className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
                 activeNav === item.path
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-amber-200 text-amber-900'
+                  : 'text-gray-700 hover:bg-amber-100'
               }`}
             >
               {item.label}
@@ -288,15 +258,7 @@ export default function PromoterDashboard() {
           ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={() => {
-              setSidebarOpen(false);
-              handleLogout();
-            }}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            Logout
-          </button>
+          {/* Logout is handled from the top header for consistent UX */}
         </div>
       </aside>
 
@@ -325,13 +287,13 @@ export default function PromoterDashboard() {
             </svg>
           </button>
           <div className="text-lg font-bold text-gray-800">
-            {activeNav === 'dashboard' ? 'PROMOTER' : 'HISTORY'}
+            {activeNav === 'dashboard' ? roleTitle : 'HISTORY'}
           </div>
           <div />
         </div>
 
         <h1 className="hidden md:block text-2xl font-bold text-gray-800 mb-6">
-          {activeNav === 'dashboard' ? 'PROMOTER DASHBOARD' : 'History'}
+          {activeNav === 'dashboard' ? `${roleTitle} DASHBOARD` : 'History'}
         </h1>
 
         {activeNav === 'dashboard' && (
@@ -345,7 +307,7 @@ export default function PromoterDashboard() {
               </button>
             </div>
             <div>
-              <p className="text-sm text-amber-700 mb-2">Schools you add are eligible for your promo code discount.</p>
+              <p className="text-sm text-amber-700 mb-2">You can view students from your assigned schools. Student creation is restricted to school role on web.</p>
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Schools Added</h2>
               {schoolsListError && schoolsAdded.length > 0 && (
                 <p className="text-sm text-red-600 mb-2" role="alert">
@@ -457,24 +419,16 @@ export default function PromoterDashboard() {
 
             {(schoolsListMeta?.totalPages ?? 1) > 1 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setSchoolsPage((p) => Math.max(1, p - 1))}
-                  disabled={schoolsPage <= 1}
-                  className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Prev
-                </button>
                 <div className="text-sm text-gray-600">
-                  Page {schoolsPage} of {schoolsTotalPages}
+                  Loaded {pagedSchoolsAdded.length} schools
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSchoolsPage((p) => Math.min(schoolsTotalPages, p + 1))}
-                  disabled={schoolsPage >= schoolsTotalPages}
+                  onClick={() => schoolsQuery.fetchNextPage()}
+                  disabled={!schoolsQuery.hasNextPage || schoolsQuery.isFetchingNextPage}
                   className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  {schoolsQuery.isFetchingNextPage ? 'Loading...' : schoolsQuery.hasNextPage ? 'Load More' : 'All Loaded'}
                 </button>
               </div>
             )}
@@ -606,6 +560,7 @@ export default function PromoterDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
-import { clearSession } from '../auth/session';
+import { logoutFromServer } from '../api/auth';
 
 import eventVideos from '../data/eventVideosCatalog.json';
 
@@ -12,8 +12,8 @@ export default function Events() {
   const [selected, setSelected] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logoutFromServer();
     navigate('/');
   };
 

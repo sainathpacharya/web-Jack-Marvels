@@ -1,153 +1,158 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Player } from '@lottiefiles/react-lottie-player';
-import { clearSession, getCurrentUser, getUserRoleId, getUserRoleName } from '../auth/session';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logoutThunk } from '../store/slices/authSlice';
+import { selectAuthUser, selectRoleId, selectRoleName } from '../store/selectors/authSelectors';
+import { ROLE_IDS } from '../auth/session';
 import {
-  subscribeAnimation,
-  paymentAnimation,
-  resultsAnimation,
-} from '../animations/index';
-import {
-  basketBall,
-  cooking,
-  crafting,
-  dance,
-  debate,
-  drama,
-  footBall,
-  movieDialogues,
-  nationalAnthem,
-  painting,
-  poems,
-  poetry,
-  quiz,
-  science,
-  shayari,
-  singing,
-  specialTalent,
-  tongueTwister,
-  twinsAct,
-} from '../animations';
+  useDashboardEventsQuery,
+  useDashboardPerformersQuery,
+  useDashboardStatsQuery,
+} from '../features/dashboard/hooks/useDashboardQuery';
+import { useNotifications } from '../components/notifications/NotificationProvider';
+import SectionSkeleton from './home/SectionSkeleton';
 
-import eventsCatalog from '../data/eventsCatalog.json';
-import { getDashBoardDetails } from '../api/dashboard';
+const QuickActionsSection = lazy(() => import('./home/QuickActionsSection'));
+const PerformersSection = lazy(() => import('./home/PerformersSection'));
+const EventsSection = lazy(() => import('./home/EventsSection'));
+const EventScheduleModal = lazy(() => import('./home/EventScheduleModal'));
+const SubscriptionPlansModal = lazy(() => import('./home/SubscriptionPlansModal'));
 
+const EVENTS_SCHEDULE_KEY = 'eventsSchedules';
 
-
-
-
-
+function readSchedulesFromStorage() {
+  try {
+    const raw = localStorage.getItem(EVENTS_SCHEDULE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 const Home = () => {
   const navigate = useNavigate();
-  const user = getCurrentUser();
-  const userRoleId = getUserRoleId();
-  const userRoleName = getUserRoleName();
-  const isAdmin = userRoleId === 1;
-  const hideSubscribeButton = [1, 3, 4].includes(userRoleId);
-  const fallbackResultsActions = isAdmin
-    ? [
-        {
-          name: 'Add School',
-          animation: resultsAnimation,
-          path: '/admin',
-          navState: { defaultNav: 'schools' },
-        },
-        {
-          name: 'Add Promoter',
-          animation: paymentAnimation,
-          path: '/admin',
-          navState: { defaultNav: 'promotors' },
-        },
-        {
-          name: 'Announce Results',
-          animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
-          path: '/results',
-        },
-        { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
-        { name: 'Admin Actions', animation: resultsAnimation, path: '/admin' },
-      ]
-    : [
-        {
-          name: 'Announce Results',
-          animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
-          path: '/results',
-        },
-        { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
-        {
-          name: 'Send Notice',
-          animation: 'https://assets1.lottiefiles.com/packages/lf20_fcfjwiyb.json',
-          path: '/home',
-        },
-      ];
-
-  const lottieByKey = {
-    singing,
-    dance,
-    painting,
-    quiz,
-    poetry,
-    debate,
-    crafting,
-    drama,
-    movieDialogues,
-    science,
-    specialTalent,
-    tongueTwister,
-    twinsAct,
-    shayari,
-    poems,
-    nationalAnthem,
-    footBall,
-    basketBall,
-    cooking,
-  };
-
-  const resolveAnimation = (anim) => {
-    if (!anim) return anim;
-    if (typeof anim !== 'string') return anim;
-    // If backend returns animation as a URL, return as-is.
-    if (anim.startsWith('http://') || anim.startsWith('https://')) return anim;
-    return lottieByKey[anim] || anim;
-  };
-
+  const dispatch = useAppDispatch();
+  const { info } = useNotifications();
+  const user = useAppSelector(selectAuthUser);
+  const userRoleId = useAppSelector(selectRoleId);
+  const userRoleName = useAppSelector(selectRoleName);
+  const [enableSecondaryQueries, setEnableSecondaryQueries] = useState(false);
+  const [performanceMarks, setPerformanceMarks] = useState({ firstPaintMs: null, homeReadyMs: null });
   const [showPlans, setShowPlans] = useState(false);
-  const [dashBoardDetails, setDashBoardDetails] = useState({ "Results": [], "performers": [], "Events": [], })
-
-  const EVENTS_SCHEDULE_KEY = 'eventsSchedules';
-
-  const [eventSchedules, setEventSchedules] = useState(() => {
-    try {
-      const raw = localStorage.getItem(EVENTS_SCHEDULE_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [nowMs, setNowMs] = useState(Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [fromValue, setFromValue] = useState('');
   const [toValue, setToValue] = useState('');
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [eventSchedules, setEventSchedules] = useState(() => readSchedulesFromStorage());
+  const isAdmin = [ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN].includes(Number(userRoleId));
+  const hideSubscribeButton = [
+    ROLE_IDS.ADMIN,
+    ROLE_IDS.SUPER_ADMIN,
+    ROLE_IDS.PROMOTOR,
+    ROLE_IDS.INFLUENCER,
+    ROLE_IDS.STUDENT,
+  ].includes(Number(userRoleId));
 
-  const eventKey = (evt) => (evt?.id || evt?.path || evt?.name || '').toString();
+  const quickActionsRef = useRef(null);
+  const performersRef = useRef(null);
+  const eventsRef = useRef(null);
+  const [performersVisible, setPerformersVisible] = useState(false);
+  const [eventsVisible, setEventsVisible] = useState(false);
 
-  const toDateTimeLocalValue = (iso) => {
+  const statsQuery = useDashboardStatsQuery({ roleId: userRoleId });
+  const performersQuery = useDashboardPerformersQuery({
+    roleId: userRoleId,
+    enabled: enableSecondaryQueries && performersVisible,
+  });
+  const eventsQuery = useDashboardEventsQuery({
+    roleId: userRoleId,
+    enabled: enableSecondaryQueries && eventsVisible,
+  });
+
+  const results = statsQuery.data || [];
+  const performers = performersQuery.data || [];
+  const events = eventsQuery.data || [];
+
+  useEffect(() => {
+    const role = Number(userRoleId);
+    if (role === ROLE_IDS.ADMIN) {
+      navigate('/admin', { replace: true });
+      return;
+    }
+    if (role === ROLE_IDS.SUPER_ADMIN) {
+      navigate('/super-admin', { replace: true });
+    }
+  }, [navigate, userRoleId]);
+
+  useEffect(() => {
+    // RoleId 4 == Student: no access to the web application.
+    if (Number(userRoleId) === ROLE_IDS.STUDENT) {
+      dispatch(logoutThunk());
+      navigate('/');
+    }
+  }, [dispatch, navigate, userRoleId]);
+
+  // Defer non-critical data to let the page paint first.
+  useEffect(() => {
+    const id = window.setTimeout(() => setEnableSecondaryQueries(true), 300);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    const paintId = window.requestAnimationFrame(() => {
+      const firstPaintMs = Math.round(performance.now() - startedAt);
+      setPerformanceMarks((prev) => ({ ...prev, firstPaintMs }));
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[home-performance] first-paint-ms', firstPaintMs);
+      }
+    });
+    return () => window.cancelAnimationFrame(paintId);
+  }, []);
+
+  useEffect(() => {
+    if (!(results.length || performers.length || events.length)) return;
+    const readyMs = Math.round(performance.now());
+    setPerformanceMarks((prev) => ({ ...prev, homeReadyMs: readyMs }));
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.debug('[home-performance] home-ready-ms', readyMs);
+    }
+  }, [events.length, performers.length, results.length]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        if (entry.target === performersRef.current) setPerformersVisible(true);
+        if (entry.target === eventsRef.current) setEventsVisible(true);
+      });
+    }, { rootMargin: '200px 0px', threshold: 0.05 });
+
+    if (quickActionsRef.current) observer.observe(quickActionsRef.current);
+    if (performersRef.current) observer.observe(performersRef.current);
+    if (eventsRef.current) observer.observe(eventsRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!eventsVisible || !events.length) return undefined;
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [events.length, eventsVisible]);
+
+  const eventKey = useCallback((evt) => (evt?.id || evt?.path || evt?.name || '').toString(), []);
+
+  const toDateTimeLocalValue = useCallback((iso) => {
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    // datetime-local expects: YYYY-MM-DDTHH:mm
     return d.toISOString().slice(0, 16);
-  };
+  }, []);
 
-  const getSchedule = (evt) => {
+  const getSchedule = useCallback((evt) => {
     const idKey = evt?.id ? evt.id.toString() : '';
     const pathKey = evt?.path ? evt.path.toString() : '';
     const nameKey = evt?.name ? evt.name.toString() : '';
@@ -156,9 +161,9 @@ const Home = () => {
     if (pathKey && eventSchedules[pathKey]) return eventSchedules[pathKey];
     if (nameKey && eventSchedules[nameKey]) return eventSchedules[nameKey];
     return null;
-  };
+  }, [eventSchedules]);
 
-  const getEventState = (evt) => {
+  const getEventState = useCallback((evt) => {
     const schedule = getSchedule(evt);
     const fromMs = schedule?.from ? new Date(schedule.from).getTime() : null;
     const toMs = schedule?.to ? new Date(schedule.to).getTime() : null;
@@ -167,9 +172,9 @@ const Home = () => {
     const isActive = nowMs >= fromMs && nowMs <= toMs;
     const remainingMs = isActive ? Math.max(0, toMs - nowMs) : 0;
     return { isActive, remainingMs };
-  };
+  }, [getSchedule, nowMs]);
 
-  const formatRemaining = (ms) => {
+  const formatRemaining = useCallback((ms) => {
     const totalSeconds = Math.floor(ms / 1000);
     const days = Math.floor(totalSeconds / (3600 * 24));
     const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
@@ -178,17 +183,17 @@ const Home = () => {
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
     return `${minutes}m ${seconds}s`;
-  };
+  }, []);
 
-  const openEventModal = (evt) => {
+  const openEventModal = useCallback((evt) => {
     const schedule = getSchedule(evt);
     setSelectedEvent(evt);
     setFromValue(toDateTimeLocalValue(schedule?.from || ''));
     setToValue(toDateTimeLocalValue(schedule?.to || ''));
     setShowEventModal(true);
-  };
+  }, [getSchedule, toDateTimeLocalValue]);
 
-  const saveEventSchedule = () => {
+  const saveEventSchedule = useCallback(() => {
     if (!selectedEvent) return;
     if (!fromValue || !toValue) {
       alert('Please select both From and To dates.');
@@ -208,199 +213,53 @@ const Home = () => {
     const key = eventKey(selectedEvent);
     if (!key) return;
 
-    const updated = {
-      ...eventSchedules,
-      [key]: {
-        from: new Date(fromMs).toISOString(),
-        to: new Date(toMs).toISOString(),
-      },
-    };
-    setEventSchedules(updated);
-    localStorage.setItem(EVENTS_SCHEDULE_KEY, JSON.stringify(updated));
+    setEventSchedules((previous) => {
+      const next = {
+        ...previous,
+        [key]: {
+          from: new Date(fromMs).toISOString(),
+          to: new Date(toMs).toISOString(),
+        },
+      };
+      localStorage.setItem(EVENTS_SCHEDULE_KEY, JSON.stringify(next));
+      return next;
+    });
     setShowEventModal(false);
-  };
+  }, [eventKey, fromValue, selectedEvent, toValue]);
 
-
-  useEffect(() => {
-    const resultsActions = isAdmin
-      ? [
-          {
-            name: 'Add School',
-            animation: resultsAnimation,
-            path: '/admin',
-            navState: { defaultNav: 'schools' },
-          },
-          {
-            name: 'Add Promoter',
-            animation: paymentAnimation,
-            path: '/admin',
-            navState: { defaultNav: 'promotors' },
-          },
-          {
-            name: 'Announce Results',
-            animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
-            path: '/results',
-          },
-          { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
-          {
-            name: 'Admin Actions',
-            animation: resultsAnimation,
-            path: '/admin',
-          },
-        ]
-      : [
-          {
-            name: 'Announce Results',
-            animation: 'https://assets6.lottiefiles.com/packages/lf20_1pxqjqps.json',
-            path: '/results',
-          },
-          { name: 'Add Quiz', animation: quiz, path: '/QuizCreator' },
-          {
-            name: 'Send Notice',
-            animation: 'https://assets1.lottiefiles.com/packages/lf20_fcfjwiyb.json',
-            path: '/home',
-          },
-        ];
-
-    setDashBoardDetails({
-      "Results": resultsActions,
-      "performers": [
-        {
-          event: "Singing Competition",
-          winner: "Ananya Rao",
-          school: "Sunshine High School",
-          image: "https://picsum.photos/seed/singer/600/240",
-        },
-        {
-          event: "Painting Contest",
-          winner: "Kabir Shah",
-          school: "Blue Ridge Academy",
-          image: "https://picsum.photos/seed/painting/600/240",
-        },
-        {
-          event: "Science Fair",
-          winner: "Tanya Mehra",
-          school: "Harmony Kinderhaus",
-          image: "https://picsum.photos/seed/science/600/240",
-        },
-        {
-          event: "Drama Show",
-          winner: "Aryan Jain",
-          school: "Green Valley High",
-          image: "https://picsum.photos/seed/drama/600/240",
-        },
-        {
-          event: "Debate Battle",
-          winner: "Mira Kapoor",
-          school: "Green Leaf School",
-          image: "https://picsum.photos/seed/debate/600/240",
-        },
-        {
-          event: "Crafting King",
-          winner: "Yash Joshi",
-          school: "Crescent Valley School",
-          image: "https://picsum.photos/seed/crafting/600/240",
-        },
-        {
-          event: "Quiz Master",
-          winner: "Nikhil Verma",
-          school: "Ocean View Academy",
-          image: "https://picsum.photos/seed/quiz/600/240",
-        },
-        {
-          event: "Singing Competition",
-          winner: "Ananya Rao",
-          school: "Sunshine High School",
-          image: "https://picsum.photos/seed/singer/600/240",
-        },
-        {
-          event: "Painting Contest",
-          winner: "Kabir Shah",
-          school: "Blue Ridge Academy",
-          image: "https://picsum.photos/seed/painting/600/240",
-        },
-        {
-          event: "Science Fair",
-          winner: "Tanya Mehra",
-          school: "Harmony Kinderhaus",
-          image: "https://picsum.photos/seed/science/600/240",
-        },
-        {
-          event: "Drama Show",
-          winner: "Aryan Jain",
-          school: "Green Valley High",
-          image: "https://picsum.photos/seed/drama/600/240",
-        },
-      ],
-      "Events": [
-        ...eventsCatalog.map((evt) => ({
-          ...evt,
-          // Optional fallback animation (we still have lottie assets available).
-          animation:
-            {
-              '/events/singing': singing,
-              '/events/dancing': dance,
-              '/events/painting': painting,
-              '/events/quiz': quiz,
-              '/events/poetry': poetry,
-              '/events/debate': debate,
-              '/events/crafting': crafting,
-              '/events/drama': drama,
-              '/events/movie-dialogues': movieDialogues,
-              '/events/science': science,
-              '/events/special-talent': specialTalent,
-              '/events/twins-act': twinsAct,
-              '/events/tongue-twister': tongueTwister,
-            }[evt.path],
-        })),
-      ]
-    })
-  }, [isAdmin])
-
-  // Fetch dashboard details dynamically after login.
-  useEffect(() => {
-    if (userRoleId == null) return;
-    let cancelled = false;
-
-    const run = async () => {
-      try {
-        const apiDetails = await getDashBoardDetails();
-        if (cancelled) return;
-
-        const normalized = {
-          ...apiDetails,
-          Results: Array.isArray(apiDetails?.Results)
-            ? apiDetails.Results.map((r) => ({ ...r, animation: resolveAnimation(r.animation) }))
-            : [],
-          performers: Array.isArray(apiDetails?.performers) ? apiDetails.performers : [],
-          Events: Array.isArray(apiDetails?.Events)
-            ? apiDetails.Events.map((e) => ({ ...e, animation: resolveAnimation(e.animation) }))
-            : [],
-        };
-
-        setDashBoardDetails((prev) => {
-          if (isAdmin) {
-            // Keep admin quick-actions (role-based) even if backend doesn't include them yet.
-            const resultsToUse = prev?.Results?.length ? prev.Results : fallbackResultsActions;
-            return { ...prev, ...normalized, Results: resultsToUse };
-          }
-          return normalized;
-        });
-      } catch (e) {
-        console.error('Failed to load dashboard details:', e);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [userRoleId, isAdmin]);
-
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = useCallback(async () => {
+    await dispatch(logoutThunk());
     navigate('/');
-  };
+  }, [dispatch, navigate]);
+
+  const onActionClick = useCallback((item) => {
+    if (item.path) {
+      if (item.navState) navigate(item.path, { state: item.navState });
+      else navigate(item.path);
+      return;
+    }
+    info('Coming soon');
+  }, [info, navigate]);
+
+  const closePlansAndPay = useCallback(() => {
+    setShowPlans(false);
+    navigate('/payment');
+  }, [navigate]);
+
+  const dashboardHeading = useMemo(() => (
+    <div className="px-6 md:px-20 pt-4">
+      <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
+        <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">◉</span>
+        Dashboard
+      </h2>
+      {isAdmin ? (
+        <p className="mt-2 text-sm text-gray-500">Welcome {userRoleName || 'Admin'}</p>
+      ) : null}
+      {import.meta.env.DEV && performanceMarks.firstPaintMs != null ? (
+        <p className="mt-1 text-xs text-slate-400">Render: {performanceMarks.firstPaintMs}ms</p>
+      ) : null}
+    </div>
+  ), [isAdmin, performanceMarks.firstPaintMs, userRoleName]);
 
   return (
     <div>
@@ -438,329 +297,55 @@ const Home = () => {
           </button>
         </div>
       </header>
-      {/* Student Dashboard heading */}
-      <div className="px-6 md:px-20 pt-4">
-        <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
-          <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">◉</span>
-          Dashboard
-        </h2>
-        {isAdmin && (
-          <p className="mt-2 text-sm text-gray-500">
-            Welcome {userRoleName || 'Admin'}
-          </p>
-        )}
-      </div>
-      {/* Menu Buttons */}
-      {dashBoardDetails.Results.length > 0 && <section className="mt-16 mb-20 px-4">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-indigo-800">
-            🎯 Explore Quick Actions
-          </h2>
-          <p className="text-gray-600 mt-2 text-sm md:text-base">
-            Manage your events, results, and announcements seamlessly
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {dashBoardDetails.Results.map((item, i) => (
-            <motion.div
-              key={i}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-4 flex flex-col items-center justify-center cursor-pointer group border border-indigo-100"
-              onClick={() => {
-                if (item.path) {
-                  if (item.navState) {
-                    navigate(item.path, { state: item.navState });
-                  } else {
-                    navigate(item.path);
-                  }
-                } else {
-                  toast.info('📢 Coming Soon!', {
-                    position: 'top-center',
-                    autoClose: 2000,
-                  });
-                }
-              }}
-            >
-              <div className="bg-white p-3 rounded-full shadow-inner border border-indigo-100 group-hover:ring-2 group-hover:ring-indigo-200 transition">
-                <Player autoplay loop src={item.animation} style={{ height: 60, width: 60 }} />
-              </div>
-              <span className="mt-3 text-sm font-semibold text-indigo-800 group-hover:text-indigo-900 transition">
-                {item.name}
-              </span>
-            </motion.div>
-          ))}
-        </div>
-      </section>}
-
-      {/* Dashboard */}
+      {dashboardHeading}
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6 pt-16">
-        {/* <h2 className="text-2xl font-bold text-center text-green-800 mb-8">
-          Welcome to the Interactive Dashboard
-        </h2> */}
-        {/* Horizontal Scrollable Weekly Winners Banner */}
+        <div ref={quickActionsRef}>
+          <Suspense fallback={<SectionSkeleton rows={3} className="mb-12" />}>
+            <QuickActionsSection actions={results} onActionClick={onActionClick} />
+          </Suspense>
+        </div>
 
-        {/* Auto-Scrolling Winners Section */}
-        {dashBoardDetails.performers.length > 0 && <section className="relative py-12 px-4 md:px-10 bg-gradient-to-r from-indigo-100 to-purple-100 shadow-inner rounded-xl mb-12 overflow-hidden">
-          <h2 className="text-3xl font-extrabold text-center text-indigo-800 mb-10">
-            🌟 This Week's Star Performers 🌟
-          </h2>
+        <div ref={performersRef}>
+          {performersVisible ? (
+            <Suspense fallback={<SectionSkeleton rows={4} className="mb-12" />}>
+              <PerformersSection performers={performers} />
+            </Suspense>
+          ) : (
+            <SectionSkeleton rows={4} className="mb-12" />
+          )}
+        </div>
 
-          <div className="w-full overflow-hidden relative">
-            <motion.div
-              className="flex gap-8 w-max"
-              animate={{ x: ["0%", "-50%"] }}
-              transition={{ duration: 40, ease: "linear", repeat: Infinity }}
-            >
-              {dashBoardDetails.performers
-                .map((winner, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: idx * 0.1 }}
-                    viewport={{ once: true }}
-                    className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] bg-white shadow-xl rounded-3xl overflow-hidden border border-indigo-100 hover:shadow-2xl transform hover:scale-105 transition duration-300"
-                  >
-                    <img
-                      src={winner.image}
-                      alt={winner.event}
-                      className="w-full h-48 object-cover"
-                      loading="lazy"
-                    />
-                    <div className="p-4">
-                      <h3 className="text-xl font-bold text-indigo-700">{winner.event}</h3>
-                      <p className="text-gray-800 font-medium mt-1">🏆 {winner.winner}</p>
-                      <p className="text-sm text-gray-600">{winner.school}</p>
-                    </div>
-                  </motion.div>
-                ))}
-            </motion.div>
-          </div>
-        </section>}
-
-
-
-
-
-
-
-        {/* Hero Banner */}
-        {dashBoardDetails.Events.length > 0 && <section className="relative bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-xl overflow-hidden shadow-lg mb-10">
-          <div className="px-6 py-10 md:px-20 text-white text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-2">Explore Our Exciting Events</h2>
-            <p className="text-sm md:text-base opacity-90">
-              Discover, participate, and shine in competitions crafted to showcase every child's unique talent!
-            </p>
-          </div>
-          <div className="absolute right-0 bottom-0 opacity-20">
-            <img src="https://cdn-icons-png.flaticon.com/512/3163/3163619.png" alt="Event Icon" className="h-40 w-40 object-contain" />
-          </div>
-        </section>}
-
-        {/* Event Grid */}
-        {dashBoardDetails.Events.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
-          {dashBoardDetails.Events.map((item, i) => (
-            <motion.div
-              key={i}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`bg-gradient-to-br from-white via-${i % 2 === 0 ? 'indigo-50' : 'pink-50'} to-white 
-                p-4 rounded-2xl shadow-lg hover:shadow-2xl transition 
-                flex flex-col items-center cursor-pointer border border-gray-200`}
-              onClick={() => openEventModal(item)}
-            >
-              <div className="bg-white p-3 rounded-full shadow-inner">
-                {item.gifUrl ? (
-                  <img
-                    src={item.gifUrl}
-                    alt={item.name}
-                    className="h-20 w-20 object-contain"
-                    loading="lazy"
-                  />
-                ) : item.animation ? (
-                  <Player autoplay loop src={item.animation} style={{ height: 80, width: 80 }} />
-                ) : null}
-              </div>
-              <span className="mt-3 text-sm font-semibold text-gray-700 text-center">{item.name}</span>
-
-              {(() => {
-                const { isActive, remainingMs } = getEventState(item);
-                if (!isActive) {
-                  return <div className="mt-1 text-xs text-gray-400 text-center">Inactive</div>;
-                }
-                return <div className="mt-1 text-xs text-green-700 text-center">Ends in {formatRemaining(remainingMs)}</div>;
-              })()}
-            </motion.div>
-          ))}
-        </div>}
-
-        {/* Event schedule modal */}
-        {showEventModal && selectedEvent && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 my-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800">Set Event Dates</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedEvent.name}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowEventModal(false)}
-                  className="text-gray-500 hover:text-gray-800 text-lg"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-                    <input
-                      type="datetime-local"
-                      value={fromValue}
-                      onChange={(e) => setFromValue(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
-                    <input
-                      type="datetime-local"
-                      value={toValue}
-                      onChange={(e) => setToValue(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                </div>
-
-                {(() => {
-                  const { isActive, remainingMs } = getEventState(selectedEvent);
-                  return (
-                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
-                      <div className="text-sm text-gray-700 font-medium">
-                        Current Status: <span className={isActive ? 'text-green-700' : 'text-gray-600'}>{isActive ? 'Active' : 'Inactive'}</span>
-                      </div>
-                      {isActive && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          Remaining time: <span className="font-medium">{formatRemaining(remainingMs)}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="flex gap-3 mt-5 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setShowEventModal(false)}
-                  className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEventSchedule}
-                  className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Save & Set Active
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
+        <div ref={eventsRef}>
+          {eventsVisible ? (
+            <Suspense fallback={<SectionSkeleton rows={6} className="mb-12" />}>
+              <EventsSection
+                events={events}
+                getEventState={getEventState}
+                formatRemaining={formatRemaining}
+                onOpenSchedule={openEventModal}
+              />
+            </Suspense>
+          ) : (
+            <SectionSkeleton rows={6} className="mb-12" />
+          )}
+        </div>
       </div>
 
-      {/* Subscription Modal */}
-      {showPlans && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl p-8 relative">
-            {/* Close button */}
-            <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-black text-xl"
-              onClick={() => {
-                setShowPlans(false); // Close modal
-                navigate('/payment'); // Go to payment page
-              }}
-            >
-              ✕
-            </button>
-
-            {/* Header */}
-            <h2 className="text-3xl md:text-4xl font-extrabold text-center text-indigo-700 mb-6">
-              Choose the Right Plan for You
-            </h2>
-            <p className="text-center text-gray-600 mb-10 max-w-2xl mx-auto">
-              Unlock exclusive benefits and participate in more events by selecting a subscription plan that fits your needs.
-            </p>
-
-            {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Basic Plan */}
-              <div className="border-2 border-yellow-300 rounded-2xl p-6 bg-yellow-50 hover:shadow-xl transition">
-                <h3 className="text-xl font-bold text-yellow-600 mb-2">🌟 Basic Plan</h3>
-                <p className="text-3xl font-extrabold text-yellow-700 mb-2">₹99 <span className="text-base font-medium">/month</span></p>
-                <ul className="text-gray-700 text-sm space-y-2 mb-4">
-                  <li>✅ Access to 5 events</li>
-                  <li>✅ Standard support</li>
-                  <li>✅ Email notifications</li>
-                </ul>
-                <button className="w-full bg-yellow-500 text-white py-2 rounded-xl hover:bg-yellow-600 transition" onClick={() => {
-                  setShowPlans(false); // Close modal
-                  navigate('/payment'); // Go to payment page
-                }}>
-                  Choose Basic
-                </button>
-              </div>
-
-              {/* Premium Plan */}
-              <div className="border-4 border-green-500 rounded-2xl p-6 bg-white shadow-lg transform scale-105">
-                <h3 className="text-xl font-bold text-green-600 mb-2">🔥 Premium Plan</h3>
-                <p className="text-3xl font-extrabold text-green-700 mb-2">₹199 <span className="text-base font-medium">/month</span></p>
-                <ul className="text-gray-700 text-sm space-y-2 mb-4">
-                  <li>✅ Unlimited event access</li>
-                  <li>✅ Priority support</li>
-                  <li>✅ Participation certificates</li>
-                  <li>✅ Early event registration</li>
-                </ul>
-                <button className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition" onClick={() => {
-                  setShowPlans(false); // Close modal
-                  navigate('/payment'); // Go to payment page
-                }}>
-                  Choose Premium
-                </button>
-              </div>
-
-              {/* Annual Plan */}
-              <div className="border-2 border-indigo-300 rounded-2xl p-6 bg-indigo-50 hover:shadow-xl transition">
-                <h3 className="text-xl font-bold text-indigo-600 mb-2">💎 Annual Plan</h3>
-                <p className="text-3xl font-extrabold text-indigo-700 mb-2">₹999 <span className="text-base font-medium">/year</span></p>
-                <ul className="text-gray-700 text-sm space-y-2 mb-4">
-                  <li>✅ All Premium benefits</li>
-                  <li>✅ Free merchandise kit</li>
-                  <li>✅ 1:1 mentor session (yearly)</li>
-                  <li>✅ Priority email + phone support</li>
-                </ul>
-                <button className="w-full bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 transition" onClick={() => {
-                  setShowPlans(false); // Close modal
-                  navigate('/payment'); // Go to payment page
-                }}>
-                  Choose Annual
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <Suspense fallback={null}>
+        <EventScheduleModal
+          open={showEventModal}
+          selectedEvent={selectedEvent}
+          fromValue={fromValue}
+          toValue={toValue}
+          onClose={() => setShowEventModal(false)}
+          onFromChange={setFromValue}
+          onToChange={setToValue}
+          onSave={saveEventSchedule}
+          getEventState={getEventState}
+          formatRemaining={formatRemaining}
+        />
+        <SubscriptionPlansModal open={showPlans} onCloseAndPay={closePlansAndPay} />
+      </Suspense>
     </div>
   );
 };

@@ -1,7 +1,20 @@
+/**
+ * Client session storage. Tokens in localStorage are visible to XSS; production hardening should prefer
+ * httpOnly + Secure + SameSite cookies issued by the API, short-lived access tokens, and CSP.
+ */
 const ACCESS_TOKEN_KEY = 'alphavlogs.accessToken';
 const REFRESH_TOKEN_KEY = 'alphavlogs.refreshToken';
 const ME_KEY = 'alphavlogs.me';
 const USER_KEY = 'user';
+export const ROLE_IDS = {
+  ADMIN: 1,
+  SCHOOL: 2,
+  PROMOTOR: 3,
+  PROMOTER: 3,
+  STUDENT: 4,
+  SUPER_ADMIN: 5,
+  INFLUENCER: 6,
+};
 
 export function setSession({ accessToken, refreshToken, me }) {
   if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
@@ -14,6 +27,11 @@ export function clearSession() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(ME_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+export function setCurrentUser(user) {
+  if (!user) return;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function getAccessToken() {
@@ -59,5 +77,13 @@ export function getUserRoleName() {
   if (!user) return '';
   // `role` is treated as UI-only display value.
   return user.roleName ?? user.role ?? '';
+}
+
+export function isStudentRole(roleId = getUserRoleId()) {
+  return Number(roleId) === ROLE_IDS.STUDENT;
+}
+
+export function isSchoolRole(roleId = getUserRoleId()) {
+  return Number(roleId) === ROLE_IDS.SCHOOL;
 }
 

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { clearSession } from '../auth/session';
+import FormInput from '../components/forms/common/FormInput';
+import FormTextarea from '../components/forms/common/FormTextarea';
 
 function QuizCreator() {
-  const navigate = useNavigate();
   const [questionForm, setQuestionForm] = useState({
     question: '',
     options: ['', '', '', ''],
@@ -14,13 +13,21 @@ function QuizCreator() {
   const [imagePreview, setImagePreview] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   const handleAddQuestion = () => {
-    if (
-      questionForm.question.trim() &&
-      questionForm.options.every(opt => opt.trim() !== '')
-    ) {
-      setQuestions([...questions, questionForm]);
+    const nextErrors = {};
+    if (!questionForm.question.trim()) nextErrors.question = 'Question is required.';
+    questionForm.options.forEach((opt, idx) => {
+      if (!opt.trim()) nextErrors[`option${idx}`] = `Option ${idx + 1} is required.`;
+    });
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors);
+      return;
+    }
+    setFormErrors({});
+    if (questionForm.question.trim() && questionForm.options.every((opt) => opt.trim() !== '')) {
+      setQuestions((prev) => [...prev, questionForm]);
       setQuestionForm({
         question: '',
         options: ['', '', '', ''],
@@ -28,8 +35,6 @@ function QuizCreator() {
         image: null,
       });
       setImagePreview(null);
-    } else {
-      alert('Please fill in all question and options.');
     }
   };
 
@@ -44,39 +49,9 @@ function QuizCreator() {
     };
     reader.readAsDataURL(file);
   };
-  const handleLogout = () => {
-    clearSession();
-    navigate('/');
-  };
-
   return (
     <div>
-         <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-            Alpha Vlogs
-          </h1>
-        </button>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleLogout}
-            className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-pink-50 p-6 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-pink-50 p-6 pt-8">
       <motion.h2
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -94,14 +69,17 @@ function QuizCreator() {
           transition={{ duration: 0.5 }}
           className="bg-white p-6 rounded-xl shadow-lg space-y-4"
         >
-          <label className="block">
+          <div>
             <span className="font-medium text-gray-700">Question</span>
-            <textarea
-              className="w-full mt-1 p-3 border rounded"
-              value={questionForm.question}
-              onChange={e => setQuestionForm({ ...questionForm, question: e.target.value })}
-            ></textarea>
-          </label>
+            <div className="mt-1">
+              <FormTextarea
+                rows={3}
+                value={questionForm.question}
+                onChange={(e) => setQuestionForm({ ...questionForm, question: e.target.value })}
+                error={formErrors.question}
+              />
+            </div>
+          </div>
 
           {/* Image Upload */}
           <label className="block">
@@ -123,19 +101,21 @@ function QuizCreator() {
 
           {/* Options */}
           {questionForm.options.map((opt, idx) => (
-            <label key={idx} className="block">
+            <div key={idx}>
               <span className="font-medium text-gray-700">Option {idx + 1}</span>
-              <input
-                type="text"
-                className="w-full mt-1 p-2 border rounded"
-                value={opt}
-                onChange={e => {
-                  const newOptions = [...questionForm.options];
-                  newOptions[idx] = e.target.value;
-                  setQuestionForm({ ...questionForm, options: newOptions });
-                }}
-              />
-            </label>
+              <div className="mt-1">
+                <FormInput
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const newOptions = [...questionForm.options];
+                    newOptions[idx] = e.target.value;
+                    setQuestionForm({ ...questionForm, options: newOptions });
+                  }}
+                  error={formErrors[`option${idx}`]}
+                />
+              </div>
+            </div>
           ))}
 
           {/* Correct Option */}
@@ -152,20 +132,24 @@ function QuizCreator() {
             </select>
           </label>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className="w-full mt-3 bg-pink-600 text-white py-2 rounded-lg hover:bg-pink-700 transition"
             onClick={handleAddQuestion}
           >
-            ➕ Add Question
-          </button>
+            Add Question
+          </motion.button>
 
           {questions.length > 0 && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               className="w-full mt-2 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
               onClick={() => setShowPreview(true)}
             >
-              📄 Release Question Paper
-            </button>
+              Release Question Paper
+            </motion.button>
           )}
         </motion.div>
 
@@ -182,7 +166,13 @@ function QuizCreator() {
           ) : (
             <div className="space-y-6">
               {questions.map((q, idx) => (
-                <div key={idx} className="bg-pink-50 p-4 rounded shadow">
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: idx * 0.05 }}
+                  className="bg-pink-50 p-4 rounded shadow"
+                >
                   <p className="font-medium">{idx + 1}. {q.question}</p>
                   {q.image && (
                     <img
@@ -201,7 +191,7 @@ function QuizCreator() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}

@@ -125,13 +125,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { registerThunk } from '../store/slices/authSlice';
+import { selectRegisterStatus } from '../store/selectors/authSelectors';
 
 function Register() {
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [registrationType, setRegistrationType] = useState('INFLUENCER');
+  const [registrationType, setRegistrationType] = useState('PROMOTOR');
   const [influencerName, setInfluencerName] = useState('');
   const [influencerHouse, setInfluencerHouse] = useState('');
   const [influencerStreet, setInfluencerStreet] = useState('');
@@ -157,6 +160,8 @@ function Register() {
   const [focusedField, setFocusedField] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const registerStatus = useAppSelector(selectRegisterStatus);
 
   const handleRegister = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -173,7 +178,7 @@ function Register() {
       nextErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6-9.';
     }
 
-    if (!registrationType) nextErrors.registrationType = 'Please select Schools or Influencers.';
+    if (!registrationType) nextErrors.registrationType = 'Please select Schools or Promoters.';
 
     if (!password) nextErrors.password = 'Password is required.';
     else if (!passwordRegex.test(password)) {
@@ -184,7 +189,7 @@ function Register() {
     if (!confirmPassword) nextErrors.confirmPassword = 'Confirm password is required.';
     else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
 
-    if (registrationType === 'INFLUENCER') {
+    if (registrationType === 'PROMOTOR') {
       if (!influencerName.trim()) nextErrors.name = 'Name is required.';
       if (!influencerHouse.trim()) nextErrors.house = 'House is required.';
       if (!influencerStreet.trim()) nextErrors.street = 'Street is required.';
@@ -226,7 +231,7 @@ function Register() {
       role: registrationType,
     };
 
-    if (registrationType === 'INFLUENCER') {
+    if (registrationType === 'PROMOTOR') {
       payload.name = influencerName.trim();
       payload.house = influencerHouse.trim();
       payload.street = influencerStreet.trim();
@@ -258,25 +263,13 @@ function Register() {
     }
 
     try {
-      const response = await fetch('http://3.254.64.117:8080/alpha-vlogs/api/registerUser', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (result.statusCode === 200) {
-        alert(result.response || 'User registered successfully!');
-        navigate('/');
-      } else {
-        alert(result.message || 'Registration failed. Try again.');
-      }
+      const result = await dispatch(registerThunk(payload)).unwrap();
+      alert(result?.response || 'User registered successfully!');
+      navigate('/');
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Registration error:', error);
-      alert('Something went wrong. Please try again later.');
+      alert(error?.message || 'Something went wrong. Please try again later.');
     }
   };
 
@@ -374,17 +367,17 @@ function Register() {
               <button
                 type="button"
                 onClick={() => {
-                  setRegistrationType('INFLUENCER');
+                  setRegistrationType('PROMOTOR');
                   setFormErrors({});
                   setFocusedField(null);
                 }}
                 className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
-                  registrationType === 'INFLUENCER'
+                  registrationType === 'PROMOTOR'
                     ? 'bg-green-600 text-white'
                     : 'bg-white text-green-700 hover:bg-green-100'
                 }`}
               >
-                Influencers
+                Promoters
               </button>
             </div>
           </div>
@@ -572,7 +565,7 @@ function Register() {
               </div>
             </div>
           )}
-          {registrationType === 'INFLUENCER' && (
+          {registrationType === 'PROMOTOR' && (
             <div className="w-full mb-4">
               <motion.input
                 whileFocus={{ scale: 1.02 }}
@@ -781,9 +774,10 @@ function Register() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             onClick={handleRegister}
+            disabled={registerStatus === 'loading'}
             className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold"
           >
-            Register
+            {registerStatus === 'loading' ? 'Registering...' : 'Register'}
           </motion.button>
           <p className="mt-6 text-sm text-center">
             Already have an account?{' '}

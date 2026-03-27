@@ -1,9 +1,13 @@
-import { apiFetch } from './client';
+import { apiClient } from '../services/apiClient';
 
 function normalizeRoleHeader(role) {
   const value = String(role || '').trim().toLowerCase();
-  if (value === 'promoter') return 'promoter';
-  return 'admin';
+  if (value === 'promoter' || value === 'promotor') return 'PROMOTOR';
+  if (value === 'school') return 'SCHOOL';
+  if (value === 'super_admin' || value === 'super-admin' || value === 'superadmin') {
+    return 'SUPER_ADMIN';
+  }
+  return 'ADMIN';
 }
 
 /** Map API school row to fields the dashboards already render. */
@@ -64,19 +68,14 @@ function unwrapSchoolsListPayload(data) {
  * GET /api/schools?page=&limit=
  * Response shape: { data: { total, limit, totalPages, page, items }, message }
  */
-export async function listSchools({ page = 1, limit = 10 } = {}) {
+export async function listSchools({ page = 1, limit = 10, signal } = {}) {
   const params = new URLSearchParams();
   params.set('page', String(page));
   params.set('limit', String(limit));
-  const res = await apiFetch(`/api/schools?${params.toString()}`, {
-    method: 'GET',
+  const data = await apiClient.get(`/api/schools?${params.toString()}`, undefined, {
     headers: { Accept: 'application/json' },
-    auth: false,
+    signal,
   });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(data?.message || 'Failed to fetch schools');
-  }
   if (typeof data?.statusCode === 'number' && data.statusCode !== 200) {
     throw new Error(data?.response || data?.message || 'Failed to fetch schools');
   }
@@ -95,24 +94,20 @@ export async function listSchools({ page = 1, limit = 10 } = {}) {
   };
 }
 
-export async function createSchool(payload, { userId, userRole } = {}) {
+export async function createSchool(payload, { userId, userRole, signal } = {}) {
   // Spring registers POST /api/schools (same handler as /api/addSchools when backend is current).
-  const res = await apiFetch('/api/schools', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'X-User-Id': String(userId ?? 1),
-      'X-User-Role': normalizeRoleHeader(userRole),
-    },
-    body: JSON.stringify(payload),
-    auth: false,
-  });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(data?.message || 'Failed to create school');
-  }
+  const data = await apiClient.post(
+    '/api/schools',
+    payload,
+    {
+      headers: {
+        Accept: 'application/json',
+        'X-User-Id': String(userId ?? 1),
+        'X-User-Role': normalizeRoleHeader(userRole),
+      },
+      signal,
+    }
+  );
 
   if (typeof data?.statusCode === 'number' && data.statusCode !== 200 && data.statusCode !== 201) {
     throw new Error(data?.response || data?.message || 'Failed to create school');
@@ -123,4 +118,23 @@ export async function createSchool(payload, { userId, userRole } = {}) {
     return inner.school;
   }
   return inner;
+}
+
+/**
+ * DELETE /api/deleteSchool/{schoolId}
+ * Authorization: header-based role mapping using `X-User-Role` only.
+ */
+export async function deleteSchool(schoolId, { userRole, signal } = {}) {
+  const id = String(schoolId ?? '').trim();
+  if (!id) throw new Error('schoolId is required');
+
+  // Some backends return 204 No Content.
+  const data = await apiClient.delete(`/api/deleteSchool/${encodeURIComponent(id)}`, {
+    headers: {
+      Accept: 'application/json',
+      'X-User-Role': normalizeRoleHeader(userRole),
+    },
+    signal,
+  });
+  return data;
 }

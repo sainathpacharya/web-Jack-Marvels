@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { clearSession } from '../auth/session';
+import { logoutFromServer } from '../api/auth';
 
 import eventsCatalog from '../data/eventsCatalog.json';
 
@@ -37,8 +37,8 @@ function Results() {
       alert('Please fill in all fields');
     }
   };
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logoutFromServer();
     navigate('/');
   };
 

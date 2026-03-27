@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import landingPageHero from '../assets/images/landingPageHero.png'
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,11 +6,22 @@ import { Player } from '@lottiefiles/react-lottie-player';
 import heroSectionAnimation from '../animations/heroSectionAnimation.json'
 import singingAnimation from '../animations/singingAnimatinon.json'
 import { login as apiLogin } from '../api/auth';
-import { setSession } from '../auth/session';
-import landingFeaturedEvents from '../data/landingFeaturedEvents.json';
+import { getPublicSummaryCount } from '../api/dashboard';
+import { deriveMustChangePassword } from '../auth/passwordFlags';
+import { clearSession, setSession } from '../auth/session';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { hydrateAuth } from '../store/slices/authSlice';
+import { fetchEvents } from '../store/slices/eventsSlice';
+import EventCard, { EventCardSkeleton } from '../components/EventCard';
+import { getAssetUrl } from '../services/eventsService';
 
 export default function Landing() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const events = useAppSelector((state) => state.events.events);
+  const eventsLoading = useAppSelector((state) => state.events.loading);
+  const eventsError = useAppSelector((state) => state.events.error);
+  const eventsSectionRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,15 +42,14 @@ export default function Landing() {
   })
 
   useEffect(() => {
-    // need to make an API cal
     setLandingPageDetails({
-      "statistics": ['40+ Schools', '3600+ Students'],
+      "statistics": [],
       "actions": [
         { title: 'Safety & Security' },
         { title: 'Cultural Activities' },
         { title: 'Creative Environment' },
       ],
-      "events": landingFeaturedEvents,
+      "events": [],
       "blogs": [
         {
           title: "The Art of Singing",
@@ -112,9 +122,37 @@ export default function Landing() {
       "contact": { "email": "support@alphavlogs.com", "Phone": "+91 98765 43210" },
       "QuickLinks": { "events": "", "login": "", "Help": "" }
     })
+  }, [])
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadSummary = async () => {
+      try {
+        const summary = await getPublicSummaryCount();
+        const activeSchools = Number(summary.activeSchools) || 0;
+        const activeStudents = Number(summary.activeStudents) || 0;
+        if (cancelled) return;
+        setLandingPageDetails((prev) => ({
+          ...prev,
+          statistics:
+            activeSchools > 0 && activeStudents > 0
+              ? [`${activeSchools}+ Schools`, `${activeStudents}+ Students`]
+              : [],
+        }));
+      } catch {
+        if (cancelled) return;
+        setLandingPageDetails((prev) => ({ ...prev, statistics: [] }));
+      }
+    };
+    loadSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  })
+  useEffect(() => {
+    dispatch(fetchEvents({ audience: 'public' }));
+  }, [dispatch]);
 
 
   const getDashboardPath = (roleId) => {
@@ -122,10 +160,19 @@ export default function Landing() {
     const id = roleId == null ? null : Number(roleId);
     switch (id) {
       case 1:
-        return '/home';
+        return '/admin';
+      case 5:
+        return '/super-admin';
+      case 2:
+        return '/school';
+      case 3:
+        return '/promoter';
+      case 4:
+        // Students should not access the web app.
+        return '/';
       default:
-        // TODO: add future roleId routing here.
-        return '/home';
+        // Unknown roleId: send to public landing page.
+        return '/';
     }
   };
 
@@ -155,18 +202,35 @@ export default function Landing() {
         user?.refresh_token ??
         '';
 
-      // Store user for Home page / role-based rendering.
-      const userForStorage = { ...user, role: user?.roleName };
+      const mustChangePassword = deriveMustChangePassword(user, auth);
+      const userForStorage = { ...user, role: user?.roleName, mustChangePassword };
       localStorage.setItem('user', JSON.stringify(userForStorage));
 
       setSession({ accessToken, refreshToken, me: userForStorage });
+      dispatch(hydrateAuth());
       setShowModal(false);
-      alert('Login successful!');
+      if (Number(userForStorage?.roleId) === 4) {
+        clearSession();
+        localStorage.removeItem('user');
+        alert('Student accounts do not have access to the web application.');
+        navigate('/');
+        return;
+      }
+
+      if (mustChangePassword) {
+        navigate('/change-password', { replace: true });
+        return;
+      }
+
       navigate(getDashboardPath(userForStorage?.roleId));
     } catch (error) {
       console.error('Login error:', error);
       alert(error?.message || 'Something went wrong. Please try again later.');
     }
+  };
+
+  const scrollToEvents = () => {
+    eventsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
     <div className="font-sans text-gray-800">
@@ -190,24 +254,35 @@ export default function Landing() {
             <a href="#" className="hover:text-green-700">Blog</a>
             <a href="#" className="hover:text-green-700">Contact</a>
           </nav> */}
-        <button
-          onClick={() => { setShowModal(true) }}
-          className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
-        >
-          Login
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/Register')}
+            className="border border-green-600 text-green-700 px-4 py-2 rounded-full hover:bg-green-50 text-sm"
+          >
+            Register
+          </button>
+          <button
+            onClick={() => { setShowModal(true) }}
+            className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
+          >
+            Login
+          </button>
+        </div>
       </header>
       {/* Hero Section */}
       <section className="flex flex-col-reverse md:flex-row items-center justify-between px-6 md:px-20 py-16 bg-gradient-to-r bg-green-100 shadow">
         <div className="md:w-1/2 text-center md:text-left">
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            The best education <br /> for your future
+            Create. Compete. Get Recognized.
           </h1>
           <p className="text-gray-600 mb-6">
-            Learn, grow, and thrive with our modern, interactive educational platform.
+            Discover student events built for coding, design, culture, and innovation. Participate in challenges, showcase your skills, and compete with peers through high-impact experiences. Earn rewards, gain recognition, and build achievements that accelerate your growth.
           </p>
-          <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full text-sm">
-            Get Started
+          <button
+            onClick={scrollToEvents}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full text-sm"
+          >
+            Explore Events
           </button>
         </div>
 
@@ -280,7 +355,7 @@ export default function Landing() {
       </section>}
 
       {/* Events Section */}
-      {landingPageDetails.events.length > 0 && <section className="px-6 md:px-20 py-16">
+      <section ref={eventsSectionRef} className="px-6 md:px-20 py-16">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-2xl font-bold">Take a look at our Events</h2>
           <button
@@ -290,77 +365,43 @@ export default function Landing() {
             View All
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {landingPageDetails.events.map((event, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: i * 0.1 }}
-              viewport={{ once: true }}
-              onClick={() => setSelectedEvent(event)}
-              className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer"
-            >
-              <video
-                src={event.videoUrl}
-                className="w-full h-40 object-cover"
-                muted
-                playsInline
-                preload="metadata"
-                onMouseOver={e => e.target.play()}
-                onMouseOut={e => e.target.pause()}
-              />
-              <div className="p-4">
-                <h4 className="font-semibold text-base mb-1">{event.title}</h4>
-                <p className="text-sm text-gray-600">{event.desc}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {eventsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <EventCardSkeleton key={idx} />
+            ))}
+          </div>
+        ) : null}
 
-      </section>}
+        {!eventsLoading && eventsError ? (
+          <div className="bg-white rounded-xl shadow border border-red-200 p-6 text-red-600">
+            {eventsError}
+          </div>
+        ) : null}
 
+        {!eventsLoading && !eventsError && events.length === 0 ? (
+          <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-gray-500">
+            No events available
+          </div>
+        ) : null}
 
-      {/* Blog Section */}
-      {landingPageDetails.blogs.length > 0 && <section className="px-6 md:px-20 py-16 bg-white">
+        {!eventsLoading && !eventsError && events.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {events.map((event) => (
+              <motion.div
+                key={String(event.id)}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+              >
+                <EventCard event={event} onClick={setSelectedEvent} />
+              </motion.div>
+            ))}
+          </div>
+        ) : null}
 
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold">Blogs to look</h2>
-          <button
-            className="text-lg font-bold text-indigo-700 hover:underline"
-            onClick={() => setShowModal(true)}
-          >
-            View All
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {landingPageDetails.blogs.map((blog, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-lg shadow hover:shadow-xl transition overflow-hidden"
-            >
-              <img
-                src={blog.image}
-                alt={blog.title}
-                className="w-full h-40 object-cover"
-              />
-              <div className="p-4">
-                <h4 className="text-base font-semibold mb-2">{blog.title}</h4>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                  {blog.fullBlog}
-                </p>
-                <button
-                  className="text-green-600 font-semibold hover:underline text-sm"
-                  onClick={() => setSelectedBlog(blog)}
-                >
-                  Read More →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-      </section>}
+      </section>
 
 
       {landingPageDetails.vendors.length > 0 && <section className="px-6 md:px-20 py-16 bg-white">
@@ -500,11 +541,11 @@ export default function Landing() {
 
                 Login
               </button>
-              <p className="mt-4 text-center text-sm text-gray-600">
-                Not registered yet?{' '}
+              <p className="mt-4 text-sm text-center">
+                Create an account?{' '}
                 <span
-                  className="text-indigo-600 font-semibold cursor-pointer hover:underline"
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/Register')}
+                  className="text-green-700 underline font-semibold cursor-pointer"
                 >
                   Register
                 </span>
@@ -536,11 +577,13 @@ export default function Landing() {
               transition={{ duration: 0.3 }}
             >
               <div className="relative">
-                <video
-                  controls
-                  src={selectedEvent.videoUrl}
-                  className="w-full max-h-[400px] object-contain"
-                />
+                <div className="w-full max-h-[400px] bg-slate-100 flex items-center justify-center">
+                  <img
+                    src={getAssetUrl(selectedEvent.eventGifOrImage)}
+                    alt={selectedEvent.eventName}
+                    className="w-full max-h-[400px] object-contain"
+                  />
+                </div>
                 <button
                   onClick={() => setSelectedEvent(null)}
                   className="absolute top-4 right-4 bg-black bg-opacity-60 text-white rounded-full px-3 py-1 text-sm hover:bg-opacity-80"
@@ -549,12 +592,8 @@ export default function Landing() {
                 </button>
               </div>
               <div className="p-6 space-y-2">
-                <h3 className="text-2xl font-bold text-indigo-800">{selectedEvent.title}</h3>
-                <p className="text-gray-700">{selectedEvent.desc}</p>
-                <div className="text-sm text-gray-600 mt-2">
-                  <p><span className="font-semibold">Winner:</span> Rahul Sharma</p>
-                  <p><span className="font-semibold">School:</span> Green Valley High School</p>
-                </div>
+                <h3 className="text-2xl font-bold text-indigo-800">{selectedEvent.eventName}</h3>
+                <p className="text-gray-700">{selectedEvent.description}</p>
               </div>
             </motion.div>
           </motion.div>

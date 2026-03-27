@@ -1,13 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearSession } from '../auth/session';
+import { List } from 'react-window';
+import AppHeader from '../components/AppHeader';
 import {
   STATIC_SCHOOLS,
   STATIC_PROMOTERS,
-  STATIC_SPONSORS,
   STATIC_WEEKLY_QUIZ_TITLES,
-  STATIC_PROMO_CODES,
 } from '../data/staticData';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logoutThunk } from '../store/slices/authSlice';
+import { selectRoleId } from '../store/selectors/authSelectors';
+import { useSchoolsQuery } from '../features/schools/hooks/useSchoolsQuery';
+import { selectAllPromoters } from '../store/selectors/promoterSelectors';
+import { addPromoterLocal } from '../store/slices/promoterSlice';
+import {
+  addPromoCodeLocal,
+  addSponsorLocal,
+  addVideoByteLocal,
+} from '../store/slices/superAdminSlice';
+import { selectPromoCodes, selectSponsors, selectVideoBytes } from '../store/selectors/superAdminSelectors';
 
 const SIDEBAR_ITEMS = [
   { label: 'Dashboard', path: 'dashboard' },
@@ -20,17 +31,35 @@ const SIDEBAR_ITEMS = [
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const userRoleId = useAppSelector(selectRoleId);
+
+  useEffect(() => {
+    // RoleId 4 == Student: no access to the web application.
+    if (userRoleId === 4) {
+      dispatch(logoutThunk());
+      navigate('/');
+    }
+  }, [dispatch, userRoleId, navigate]);
+
   const [activeNav, setActiveNav] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [schools, setSchools] = useState([...STATIC_SCHOOLS]);
-  const [promoters, setPromoters] = useState([...STATIC_PROMOTERS]);
-  const [sponsors, setSponsors] = useState([...STATIC_SPONSORS]);
+  const schoolsQuery = { scope: 'superadmin', page: 1, limit: 500 };
+  const schoolsFromApi = useSchoolsQuery({ ...schoolsQuery, fallbackToStatic: true });
+  const schoolsFromStore = schoolsFromApi.data?.items || [];
+  const schools = schoolsFromStore.length ? schoolsFromStore : [...STATIC_SCHOOLS];
+  const promotersFromStore = useAppSelector(selectAllPromoters);
+  const promoters = promotersFromStore.length ? promotersFromStore : [...STATIC_PROMOTERS];
+  const sponsors = useAppSelector(selectSponsors);
+  const videoBytes = useAppSelector(selectVideoBytes);
+  const promoCodes = useAppSelector(selectPromoCodes);
 
   const SCHOOLS_PAGE_SIZE = 10;
   const [schoolsPage, setSchoolsPage] = useState(1);
   const schoolsTotalPages = Math.max(1, Math.ceil(schools.length / SCHOOLS_PAGE_SIZE));
   const schoolsStartIndex = (schoolsPage - 1) * SCHOOLS_PAGE_SIZE;
   const pagedSchools = schools.slice(schoolsStartIndex, schoolsStartIndex + SCHOOLS_PAGE_SIZE);
+  const useVirtualizedSchools = schools.length > 50;
 
   const PROMOTERS_PAGE_SIZE = 10;
   const [promotersPage, setPromotersPage] = useState(1);
@@ -81,17 +110,14 @@ export default function SuperAdminDashboard() {
   });
   const [newSponsorName, setNewSponsorName] = useState('');
   const [newVideoByteTitle, setNewVideoByteTitle] = useState('');
-  const [videoBytes, setVideoBytes] = useState([]);
-  const [promoCodes, setPromoCodes] = useState([...STATIC_PROMO_CODES]);
-
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     navigate('/');
   };
 
   const handleAddSchool = () => {
     if (newSchoolName.trim()) {
-      setSchools([...schools, { id: Date.now(), name: newSchoolName.trim() }]);
+      alert('School creation is managed in Admin/Promoter workflows.');
       setNewSchoolName('');
       setShowAddSchool(false);
     }
@@ -178,19 +204,11 @@ export default function SuperAdminDashboard() {
       referralCode: promoterForm.referralCode?.trim() || '',
       notes: promoterForm.notes?.trim() || '',
     };
-    setPromoters([...promoters, promoter]);
+    dispatch(addPromoterLocal(promoter));
     // Create promo code for this promoter — discount applies to schools added by this promoter
     const codeRaw = promoterForm.promoCode?.trim();
     const promoCode = codeRaw || `PROMO_${String(promoterId).slice(-6)}`;
-    setPromoCodes((prev) => [
-      ...prev,
-      {
-        code: promoCode,
-        discount: `${discountNum}%`,
-        promoterId,
-        promoterName: promoter.name,
-      },
-    ]);
+    dispatch(addPromoCodeLocal({ code: promoCode, discount: `${discountNum}%`, promoterId, promoterName: promoter.name }));
     // Persist so admin payment can apply promoter discount for schools added by this promoter
     try {
       const stored = JSON.parse(localStorage.getItem('promoterPromoCodes') || '{}');
@@ -202,21 +220,23 @@ export default function SuperAdminDashboard() {
   };
   const handleAddSponsor = () => {
     if (newSponsorName.trim()) {
-      setSponsors([...sponsors, { id: Date.now(), name: newSponsorName.trim() }]);
+      dispatch(addSponsorLocal({ id: Date.now(), name: newSponsorName.trim() }));
       setNewSponsorName('');
       setShowAddSponsor(false);
     }
   };
   const handleAddVideoByte = () => {
     if (newVideoByteTitle.trim()) {
-      setVideoBytes([...videoBytes, { id: Date.now(), title: newVideoByteTitle.trim() }]);
+      dispatch(addVideoByteLocal({ id: Date.now(), title: newVideoByteTitle.trim() }));
       setNewVideoByteTitle('');
       setShowAddVideoByte(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 flex-col">
+      <AppHeader onLogout={handleLogout} />
+      <div className="flex flex-1">
       {/* Sidebar */}
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
         <div className="p-5 border-b border-gray-100">
@@ -237,14 +257,7 @@ export default function SuperAdminDashboard() {
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={handleLogout}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            Logout
-          </button>
-        </div>
+        <div className="p-3 border-t border-gray-100" />
       </aside>
 
       {sidebarOpen && (
@@ -281,15 +294,7 @@ export default function SuperAdminDashboard() {
           ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={() => {
-              setSidebarOpen(false);
-              handleLogout();
-            }}
-            className="w-full px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            Logout
-          </button>
+          {/* Logout is handled from the top header for consistent UX */}
         </div>
       </aside>
 
@@ -374,6 +379,37 @@ export default function SuperAdminDashboard() {
           <>
           <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
+              {useVirtualizedSchools ? (
+                <>
+                  <div className="grid grid-cols-2 bg-gray-50 text-gray-700 text-sm font-semibold">
+                    <div className="px-5 py-3">S No</div>
+                    <div className="px-5 py-3">School Name</div>
+                  </div>
+                  <List
+                    className="w-full"
+                    rowComponent={({ index, style, schools: rowSchools, startIndex }) => {
+                      const s = rowSchools[index];
+                      if (!s) return null;
+                      return (
+                        <div style={style} className="grid grid-cols-2 border-b border-gray-100 hover:bg-gray-50 text-sm">
+                          <div className="px-5 py-4 whitespace-nowrap">{startIndex + index + 1}</div>
+                          <div className="px-5 py-4">
+                            <span style={twoLineEllipsisStyle} className="font-medium text-gray-800">
+                              {s.name}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }}
+                    rowCount={pagedSchools.length}
+                    rowHeight={56}
+                    rowProps={{ schools: pagedSchools, startIndex: schoolsStartIndex }}
+                    style={{ height: 420 }}
+                  >
+                    {null}
+                  </List>
+                </>
+              ) : (
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
@@ -402,6 +438,7 @@ export default function SuperAdminDashboard() {
                   )}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
 
@@ -726,6 +763,7 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

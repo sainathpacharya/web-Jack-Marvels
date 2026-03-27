@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { clearSession } from '../auth/session';
+import { logoutFromServer } from '../api/auth';
 
 const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
 const PROMOTER_PROMO_CODES_KEY = 'promoterPromoCodes';
@@ -29,8 +29,8 @@ function Payment() {
   const discountPercent = promoterPromo ? parseInt(promoterPromo.discount || '0', 10) : 0;
   const discountedAmount = promoterPromo ? Math.round(studentPaymentAmount * (1 - discountPercent / 100)) : studentPaymentAmount;
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logoutFromServer();
     navigate('/');
   };
   return (
