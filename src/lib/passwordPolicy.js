@@ -40,3 +40,35 @@ export function validateStrongPassword(password) {
 /** User-facing requirement line for forms (no secret patterns). */
 export const PASSWORD_REQUIREMENTS_SUMMARY =
   'At least 8 characters with uppercase, lowercase, a number, and a symbol.';
+
+/** Longer passwords are encouraged in UI copy; schema still allows min 8 to match backend. */
+export const PASSWORD_RECOMMENDED_MIN = 10;
+
+/**
+ * @typedef {'weak' | 'medium' | 'strong'} PasswordStrengthLabel
+ */
+
+/**
+ * Heuristic strength meter (does not replace regex validation).
+ * @param {string} password
+ * @returns {{ label: PasswordStrengthLabel; score: number }}
+ */
+export function getPasswordStrength(password) {
+  const p = password ?? '';
+  let score = 0;
+  if (p.length >= PASSWORD_MIN_LENGTH) score += 1;
+  if (p.length >= PASSWORD_RECOMMENDED_MIN) score += 1;
+  if (/[a-z]/.test(p)) score += 1;
+  if (/[A-Z]/.test(p)) score += 1;
+  if (/\d/.test(p)) score += 1;
+  if (/[^A-Za-z0-9]/.test(p)) score += 1;
+
+  /** @type {PasswordStrengthLabel} */
+  let label = 'weak';
+  if (score >= 5 && p.length >= PASSWORD_MIN_LENGTH && STRONG_PASSWORD_REGEX.test(p)) {
+    label = 'strong';
+  } else if (score >= 3) {
+    label = 'medium';
+  }
+  return { label, score };
+}

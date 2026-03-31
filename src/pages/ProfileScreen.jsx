@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import FormInput from '../components/forms/common/FormInput';
 import FormTextarea from '../components/forms/common/FormTextarea';
 import FormActions from '../components/forms/common/FormActions';
 import { useProfileQuery, useUpdateProfileMutation } from '../features/profile/hooks/useProfileQuery';
 import { useNotifications } from '../components/notifications/NotificationProvider';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^[6-9]\d{9}$/;
+import { digitsOnly, normalizeEmail, profileFormSchema, sanitizeTextInput } from '../lib/validation';
+import { extractFieldErrorsFromCaughtError } from '../lib/validation/apiFieldErrors';
 
 export default function ProfileScreen() {
   const navigate = useNavigate();
@@ -32,8 +32,14 @@ export default function ProfileScreen() {
     handleSubmit,
     reset,
     watch,
-    formState: { errors, isDirty },
-  } = useForm({ defaultValues: defaults, mode: 'onBlur' });
+    setError,
+    formState: { errors, isDirty, isValid },
+  } = useForm({
+    resolver: zodResolver(profileFormSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    defaultValues: defaults,
+  });
 
   useEffect(() => {
     if (profile) {
@@ -50,10 +56,24 @@ export default function ProfileScreen() {
   const profileImage = watch('profilePicture');
 
   const onSubmit = async (values) => {
+    const payload = {
+      fullName: sanitizeTextInput(values.fullName, { maxLen: 200 }),
+      email: normalizeEmail(values.email),
+      phone: digitsOnly(values.phone),
+      address: values.address ? sanitizeTextInput(values.address, { maxLen: 2000 }) : '',
+      profilePicture: values.profilePicture
+        ? sanitizeTextInput(values.profilePicture, { maxLen: 2000 })
+        : '',
+    };
     try {
-      await updateProfileMutation.mutateAsync(values);
+      await updateProfileMutation.mutateAsync(payload);
       success('Profile updated successfully.');
     } catch (error) {
+      const fieldErrors = extractFieldErrorsFromCaughtError(error);
+      const keys = Object.keys(fieldErrors);
+      if (keys.length) {
+        keys.forEach((k) => setError(k, { message: fieldErrors[k] }));
+      }
       notifyError(error?.message || 'Failed to update profile.');
     }
   };
@@ -66,31 +86,31 @@ export default function ProfileScreen() {
 
         {profileLoading ? <p className="mt-4 text-sm text-gray-600">Loading profile...</p> : null}
 
-        <form className="mt-5 space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
           <FormInput
             placeholder="Full Name"
             error={errors.fullName?.message}
-            {...register('fullName', { required: 'Full Name is required.' })}
+            {...register('fullName')}
           />
           <FormInput
             placeholder="Email"
             error={errors.email?.message}
-            {...register('email', {
-              required: 'Email is required.',
-              validate: (v) => EMAIL_REGEX.test(v || '') || 'Enter a valid email address.',
-            })}
+            autoComplete="email"
+            {...register('email')}
           />
           <FormInput
             placeholder="Phone Number"
             maxLength={10}
+            inputMode="numeric"
             error={errors.phone?.message}
-            {...register('phone', {
-              required: 'Phone Number is required.',
-              validate: (v) => PHONE_REGEX.test(v || '') || 'Enter a valid 10-digit phone number.',
-            })}
+            {...register('phone')}
           />
-          <FormInput placeholder="Profile Picture URL (optional)" {...register('profilePicture')} />
-          <FormTextarea rows={3} placeholder="Address (optional)" {...register('address')} />
+          <FormInput
+            placeholder="Profile Picture URL (optional)"
+            error={errors.profilePicture?.message}
+            {...register('profilePicture')}
+          />
+          <FormTextarea rows={3} placeholder="Address (optional)" error={errors.address?.message} {...register('address')} />
 
           {profileImage ? (
             <img src={profileImage} alt="Profile" className="h-20 w-20 rounded-full border border-gray-200 object-cover" />
@@ -121,7 +141,7 @@ export default function ProfileScreen() {
             onSubmit={handleSubmit(onSubmit)}
             submitLabel="Save Changes"
             submitting={updateProfileMutation.isPending}
-            submitDisabled={!isDirty}
+            submitDisabled={!isDirty || !isValid}
           />
           <button
             type="button"

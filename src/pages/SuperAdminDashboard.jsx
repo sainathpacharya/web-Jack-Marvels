@@ -19,6 +19,7 @@ import {
   addVideoByteLocal,
 } from '../store/slices/superAdminSlice';
 import { selectPromoCodes, selectSponsors, selectVideoBytes } from '../store/selectors/superAdminSelectors';
+import { validateSuperAdminPromoterForm } from '../lib/validation';
 
 const SIDEBAR_ITEMS = [
   { label: 'Dashboard', path: 'dashboard' },
@@ -92,6 +93,7 @@ export default function SuperAdminDashboard() {
   const [showAddSponsor, setShowAddSponsor] = useState(false);
   const [showAddVideoByte, setShowAddVideoByte] = useState(false);
   const [newSchoolName, setNewSchoolName] = useState('');
+  const [promoterFormErrors, setPromoterFormErrors] = useState({});
   const [promoterForm, setPromoterForm] = useState({
     name: '',
     email: '',
@@ -135,6 +137,7 @@ export default function SuperAdminDashboard() {
   };
 
   const resetPromoterForm = () => {
+    setPromoterFormErrors({});
     setPromoterForm({
       name: '',
       email: '',
@@ -154,42 +157,15 @@ export default function SuperAdminDashboard() {
   };
 
   const handleAddPromoter = () => {
+    const fieldErrors = validateSuperAdminPromoterForm(promoterForm);
+    if (Object.keys(fieldErrors).length > 0) {
+      setPromoterFormErrors(fieldErrors);
+      return;
+    }
+    setPromoterFormErrors({});
     const { name, email, mobile, address } = promoterForm;
-    if (!name?.trim()) {
-      alert('Please enter promoter name.');
-      return;
-    }
-    if (!email?.trim()) {
-      alert('Please enter email address.');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      alert('Please enter a valid email address.');
-      return;
-    }
-    if (!mobile?.trim()) {
-      alert('Please enter mobile number.');
-      return;
-    }
-    if (!/^[6-9]\d{9}$/.test(mobile.trim().replace(/\s/g, ''))) {
-      alert('Please enter a valid 10-digit mobile number (starting with 6-9).');
-      return;
-    }
-    if (!address?.trim()) {
-      alert('Please enter address.');
-      return;
-    }
     const discountVal = promoterForm.discountPercent?.trim();
-    if (!discountVal) {
-      alert('Please enter discount % for the promoter\'s promo code (discount for schools they add).');
-      return;
-    }
     const discountNum = parseInt(discountVal, 10);
-    if (isNaN(discountNum) || discountNum < 1 || discountNum > 100) {
-      alert('Discount % must be between 1 and 100.');
-      return;
-    }
     const promoterId = Date.now();
     const promoter = {
       id: promoterId,
@@ -606,25 +582,43 @@ export default function SuperAdminDashboard() {
             <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
               <input
                 value={promoterForm.name}
-                onChange={(e) => handlePromoterFormChange('name', e.target.value)}
+                onChange={(e) => {
+                  handlePromoterFormChange('name', e.target.value);
+                  setPromoterFormErrors((p) => ({ ...p, name: undefined }));
+                }}
                 placeholder="Full name *"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.name ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.name ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.name}</p>
+              ) : null}
               <input
                 value={promoterForm.email}
-                onChange={(e) => handlePromoterFormChange('email', e.target.value)}
+                onChange={(e) => {
+                  handlePromoterFormChange('email', e.target.value);
+                  setPromoterFormErrors((p) => ({ ...p, email: undefined }));
+                }}
                 placeholder="Email ID *"
                 type="email"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.email ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.email ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.email}</p>
+              ) : null}
               <input
                 value={promoterForm.mobile}
-                onChange={(e) => handlePromoterFormChange('mobile', e.target.value)}
+                onChange={(e) =>
+                  handlePromoterFormChange('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))
+                }
                 placeholder="Mobile number * (10 digits)"
                 type="tel"
                 maxLength={10}
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                inputMode="numeric"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.mobile ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.mobile ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.mobile}</p>
+              ) : null}
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Photo (optional)</label>
                 <input
@@ -639,35 +633,54 @@ export default function SuperAdminDashboard() {
               </div>
               <input
                 value={promoterForm.referralCode}
-                onChange={(e) => handlePromoterFormChange('referralCode', e.target.value)}
+                onChange={(e) =>
+                  handlePromoterFormChange('referralCode', e.target.value.replace(/[^a-zA-Z0-9]/g, ''))
+                }
                 placeholder="Referral code (if any)"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.referralCode ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.referralCode ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.referralCode}</p>
+              ) : null}
 
               <input
                 value={promoterForm.instagramProfileLink}
-                onChange={(e) =>
-                  handlePromoterFormChange('instagramProfileLink', e.target.value)
-                }
+                onChange={(e) => {
+                  handlePromoterFormChange('instagramProfileLink', e.target.value);
+                  setPromoterFormErrors((p) => ({ ...p, instagramProfileLink: undefined }));
+                }}
                 placeholder="Instagram profile link (optional)"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.instagramProfileLink ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.instagramProfileLink ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.instagramProfileLink}</p>
+              ) : null}
 
               <input
                 value={promoterForm.youtubeProfileLink}
-                onChange={(e) =>
-                  handlePromoterFormChange('youtubeProfileLink', e.target.value)
-                }
+                onChange={(e) => {
+                  handlePromoterFormChange('youtubeProfileLink', e.target.value);
+                  setPromoterFormErrors((p) => ({ ...p, youtubeProfileLink: undefined }));
+                }}
                 placeholder="YouTube profile link (optional)"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.youtubeProfileLink ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.youtubeProfileLink ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.youtubeProfileLink}</p>
+              ) : null}
               <textarea
                 value={promoterForm.address}
-                onChange={(e) => handlePromoterFormChange('address', e.target.value)}
+                onChange={(e) => {
+                  handlePromoterFormChange('address', e.target.value);
+                  setPromoterFormErrors((p) => ({ ...p, address: undefined }));
+                }}
                 placeholder="Address *"
                 rows={2}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                className={`w-full p-3 border rounded-lg resize-none ${promoterFormErrors.address ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.address ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.address}</p>
+              ) : null}
               <div className="grid grid-cols-2 gap-3">
                 <input
                   value={promoterForm.city}
@@ -684,10 +697,17 @@ export default function SuperAdminDashboard() {
               </div>
               <input
                 value={promoterForm.pincode}
-                onChange={(e) => handlePromoterFormChange('pincode', e.target.value)}
+                onChange={(e) =>
+                  handlePromoterFormChange('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
                 placeholder="Pincode"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                inputMode="numeric"
+                maxLength={6}
+                className={`w-full p-3 border rounded-lg ${promoterFormErrors.pincode ? 'border-red-500' : 'border-gray-300'}`}
               />
+              {promoterFormErrors.pincode ? (
+                <p className="text-xs text-red-600 -mt-2 mb-1">{promoterFormErrors.pincode}</p>
+              ) : null}
               <textarea
                 value={promoterForm.notes}
                 onChange={(e) => handlePromoterFormChange('notes', e.target.value)}
@@ -700,19 +720,30 @@ export default function SuperAdminDashboard() {
                 <p className="text-xs text-gray-500 mb-2">Discount applies to schools added by this promoter.</p>
                 <input
                   value={promoterForm.promoCode}
-                  onChange={(e) => handlePromoterFormChange('promoCode', e.target.value)}
+                  onChange={(e) =>
+                    handlePromoterFormChange('promoCode', e.target.value.replace(/[^a-zA-Z0-9]/g, ''))
+                  }
                   placeholder="Promo code (optional — auto-generated if blank)"
-                  className="w-full p-3 border border-gray-300 rounded-lg mb-3"
+                  className={`w-full p-3 border rounded-lg mb-3 ${promoterFormErrors.promoCode ? 'border-red-500' : 'border-gray-300'}`}
                 />
+                {promoterFormErrors.promoCode ? (
+                  <p className="text-xs text-red-600 mb-2">{promoterFormErrors.promoCode}</p>
+                ) : null}
                 <input
                   value={promoterForm.discountPercent}
-                  onChange={(e) => handlePromoterFormChange('discountPercent', e.target.value)}
+                  onChange={(e) => {
+                    handlePromoterFormChange('discountPercent', e.target.value);
+                    setPromoterFormErrors((p) => ({ ...p, discountPercent: undefined }));
+                  }}
                   placeholder="Discount % * (1–100)"
                   type="number"
                   min={1}
                   max={100}
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className={`w-full p-3 border rounded-lg ${promoterFormErrors.discountPercent ? 'border-red-500' : 'border-gray-300'}`}
                 />
+                {promoterFormErrors.discountPercent ? (
+                  <p className="text-xs text-red-600 mt-1">{promoterFormErrors.discountPercent}</p>
+                ) : null}
               </div>
             </div>
             <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">

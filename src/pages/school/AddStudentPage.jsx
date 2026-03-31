@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../../auth/session';
+import { addStudentFormSchema } from '../../lib/validation/schemas';
+import { zodErrorToFlatFieldErrors } from '../../lib/validation/zodUtils';
 
 export default function AddStudentPage() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export default function AddStudentPage() {
     section: '',
     rollNumber: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [toast, setToast] = useState('');
   const [students, setStudents] = useState(() => {
     try {
@@ -32,22 +35,23 @@ export default function AddStudentPage() {
     }
   }, []);
 
-  const handleAddStudent = () => {
-    const name = studentForm.name.trim();
-    const className = studentForm.className.trim();
+  const canSubmit = addStudentFormSchema.safeParse(studentForm).success;
 
-    if (!name || !className) {
-      setToast('Student name and class are required.');
-      window.setTimeout(() => setToast(''), 2500);
+  const handleAddStudent = () => {
+    const parsed = addStudentFormSchema.safeParse(studentForm);
+    if (!parsed.success) {
+      setFieldErrors(zodErrorToFlatFieldErrors(parsed.error));
       return;
     }
+    setFieldErrors({});
+    const { name, className, section, rollNumber } = parsed.data;
 
     const newStudent = {
       id: Date.now(),
       name,
       className,
-      section: studentForm.section.trim(),
-      rollNumber: studentForm.rollNumber.trim(),
+      section,
+      rollNumber,
     };
     const nextStudents = [newStudent, ...students];
     setStudents(nextStudents);
@@ -77,18 +81,30 @@ export default function AddStudentPage() {
       <div className="mt-6 rounded-xl border border-sky-100 bg-[#e6f6ff] p-4">
         <h2 className="text-sm font-semibold text-sky-900">Add Student</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input
-            value={studentForm.name}
-            onChange={(e) => setStudentForm((prev) => ({ ...prev, name: e.target.value }))}
-            placeholder="Student name *"
-            className="w-full rounded-lg border border-sky-200 p-3"
-          />
-          <input
-            value={studentForm.className}
-            onChange={(e) => setStudentForm((prev) => ({ ...prev, className: e.target.value }))}
-            placeholder="Class *"
-            className="w-full rounded-lg border border-sky-200 p-3"
-          />
+          <div>
+            <input
+              value={studentForm.name}
+              onChange={(e) => {
+                setStudentForm((prev) => ({ ...prev, name: e.target.value }));
+                setFieldErrors((f) => ({ ...f, name: undefined }));
+              }}
+              placeholder="Student name *"
+              className={`w-full rounded-lg border p-3 ${fieldErrors.name ? 'border-red-500' : 'border-sky-200'}`}
+            />
+            {fieldErrors.name ? <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p> : null}
+          </div>
+          <div>
+            <input
+              value={studentForm.className}
+              onChange={(e) => {
+                setStudentForm((prev) => ({ ...prev, className: e.target.value }));
+                setFieldErrors((f) => ({ ...f, className: undefined }));
+              }}
+              placeholder="Class *"
+              className={`w-full rounded-lg border p-3 ${fieldErrors.className ? 'border-red-500' : 'border-sky-200'}`}
+            />
+            {fieldErrors.className ? <p className="mt-1 text-xs text-red-600">{fieldErrors.className}</p> : null}
+          </div>
           <input
             value={studentForm.section}
             onChange={(e) => setStudentForm((prev) => ({ ...prev, section: e.target.value }))}
@@ -105,7 +121,8 @@ export default function AddStudentPage() {
         <button
           type="button"
           onClick={handleAddStudent}
-          className="mt-3 rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800"
+          disabled={!canSubmit}
+          className="mt-3 rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Create Student
         </button>

@@ -37,6 +37,13 @@ import {
 } from '../components/icons/AppIcons';
 import FormInput from '../components/forms/common/FormInput';
 import { PASSWORD_REQUIREMENTS_SUMMARY, validateStrongPassword } from '../lib/passwordPolicy';
+import {
+  validateAdminSchoolForm,
+  validateAdminPromoterForm,
+  validatePartnerAccountForm,
+} from '../lib/validation';
+import { eventDateRangeSchema } from '../lib/validation/schemas';
+import { zodErrorToFlatFieldErrors } from '../lib/validation/zodUtils';
 
 const AdminPromoterFormModal = lazy(() => import('../components/forms/admin/AdminPromoterFormModal'));
 const AdminSchoolFormModal = lazy(() => import('../components/forms/admin/AdminSchoolFormModal'));
@@ -144,6 +151,7 @@ export default function AdminDashboard() {
   const eventsError = eventsQuery.error?.message || null;
   const [activationTargetEvent, setActivationTargetEvent] = useState(null);
   const [activationForm, setActivationForm] = useState({ fromDate: '', toDate: '' });
+  const [activationFormErrors, setActivationFormErrors] = useState({});
 
   const [showAddSchool, setShowAddSchool] = useState(false);
   const [showEditSchool, setShowEditSchool] = useState(false);
@@ -249,49 +257,12 @@ export default function AdminDashboard() {
     dispatch(updatePromoterStatusLocal({ id, status: nextStatus }));
   };
 
-  const validatePromoterForm = (form) => {
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const name = form.name?.trim();
-    const email = form.email?.trim();
-    const phoneRaw = form.phone?.trim().replace(/\s/g, '');
-    const pincode = form.pincode?.trim();
-
-    if (!name) errors.name = 'Promoter name is required.';
-    if (!email) errors.email = 'Promoter email is required.';
-    else if (!emailRegex.test(email)) errors.email = 'Enter a valid promoter email.';
-    if (!phoneRaw) errors.phone = 'Promoter phone is required.';
-    else if (!/^[6-9]\d{9}$/.test(phoneRaw)) errors.phone = 'Enter a valid 10-digit phone starting with 6-9.';
-    if (pincode && !/^\d{6}$/.test(pincode)) errors.pincode = 'Enter a valid 6-digit pincode.';
-
-    return errors;
-  };
-
-  /** Partners are super admin accounts (POST `/api/super-admins`). */
-  const validatePartnerForm = (form) => {
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const name = form.name?.trim();
-    const mobileRaw = form.mobileNumber?.trim().replace(/\s/g, '');
-    const email = form.email?.trim();
-
-    if (!name) errors.name = 'Name is required.';
-    if (!mobileRaw) errors.mobileNumber = 'Mobile number is required.';
-    else if (!/^[6-9]\d{9}$/.test(mobileRaw)) {
-      errors.mobileNumber = 'Enter a valid 10-digit mobile number starting with 6-9.';
-    }
-    if (!email) errors.email = 'Email is required.';
-    else if (!emailRegex.test(email)) errors.email = 'Enter a valid email address.';
-
-    return errors;
-  };
-
   const handleCreatePartner = async () => {
     if (!canManageAdminData) {
       notifyError('Only admin can add partners.');
       return;
     }
-    const errors = validatePartnerForm(partnerForm);
+    const errors = validatePartnerAccountForm(partnerForm);
     setPartnerFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -351,29 +322,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const validateSchoolForm = (form) => {
-    const errors = {};
-    const pincode = form.pincode?.trim();
-    const contactPhone = form.contactPhone?.trim().replace(/\s/g, '');
-    if (!form.name?.trim()) errors.name = 'School name is required.';
-    if (!form.address?.trim()) errors.address = 'Address is required.';
-    if (!form.city?.trim()) errors.city = 'City is required.';
-    if (!form.state?.trim()) errors.state = 'State is required.';
-    if (!pincode) errors.pincode = 'Pincode is required.';
-    else if (!/^\d{6}$/.test(pincode)) errors.pincode = 'Enter a valid 6-digit pincode.';
-    if (!form.contactName?.trim()) errors.contactName = 'Contact person name is required.';
-    if (!contactPhone) errors.contactPhone = 'Contact mobile number is required.';
-    else if (!/^[6-9]\d{9}$/.test(contactPhone)) errors.contactPhone = 'Enter a valid 10-digit number starting with 6-9.';
-    if (form.hasBranches && !form.branchCode?.trim()) errors.branchCode = 'Branch code is required when school has branches.';
-    return errors;
-  };
-
   const handleAddPromoter = () => {
     if (!canManageAdminData) {
       notifyError('Super admin has view-only access for this screen.');
       return;
     }
-    const errors = validatePromoterForm(promoterForm);
+    const errors = validateAdminPromoterForm(promoterForm);
     setPromoterFormErrors(errors);
     if (Object.keys(errors).length > 0) {
       return;
@@ -433,7 +387,7 @@ export default function AdminDashboard() {
       notifyError('Super admin has view-only access for this screen.');
       return;
     }
-    const errors = validateSchoolForm(schoolForm);
+    const errors = validateAdminSchoolForm(schoolForm);
     setSchoolFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
     setSchoolSubmitting(true);
@@ -529,6 +483,7 @@ export default function AdminDashboard() {
 
   const openActivationModal = (event) => {
     setActivationTargetEvent(event);
+    setActivationFormErrors({});
     setActivationForm({
       fromDate: String(event?.fromDate ?? '').slice(0, 10),
       toDate: String(event?.toDate ?? '').slice(0, 10),
@@ -538,19 +493,20 @@ export default function AdminDashboard() {
   const closeActivationModal = () => {
     setActivationTargetEvent(null);
     setActivationForm({ fromDate: '', toDate: '' });
+    setActivationFormErrors({});
   };
 
   const confirmActivation = async () => {
-    const fromDate = String(activationForm.fromDate || '').trim();
-    const toDate = String(activationForm.toDate || '').trim();
-    if (!fromDate || !toDate) {
-      notifyError('From date and To date are required to activate an event.');
+    const parsed = eventDateRangeSchema.safeParse({
+      fromDate: activationForm.fromDate,
+      toDate: activationForm.toDate,
+    });
+    if (!parsed.success) {
+      setActivationFormErrors(zodErrorToFlatFieldErrors(parsed.error));
       return;
     }
-    if (fromDate > toDate) {
-      notifyError('From date must be less than or equal to To date.');
-      return;
-    }
+    setActivationFormErrors({});
+    const { fromDate, toDate } = parsed.data;
     await handleUpdateEventStatus({
       eventId: activationTargetEvent?.id,
       nextStatus: 'active',
@@ -589,7 +545,7 @@ export default function AdminDashboard() {
       return;
     }
     if (editingSchoolId === null) return;
-    const errors = validateSchoolForm(editSchoolForm);
+    const errors = validateAdminSchoolForm(editSchoolForm);
     setEditSchoolFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
     setEditSchoolSubmitting(true);
@@ -966,18 +922,34 @@ export default function AdminDashboard() {
                   <input
                     type="date"
                     value={activationForm.fromDate}
-                    onChange={(e) => setActivationForm((prev) => ({ ...prev, fromDate: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                    onChange={(e) => {
+                      setActivationForm((prev) => ({ ...prev, fromDate: e.target.value }));
+                      setActivationFormErrors((prev) => ({ ...prev, fromDate: undefined }));
+                    }}
+                    className={`mt-1 w-full rounded-lg border px-3 py-2 ${
+                      activationFormErrors.fromDate ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {activationFormErrors.fromDate ? (
+                    <p className="mt-1 text-xs text-red-600">{activationFormErrors.fromDate}</p>
+                  ) : null}
                 </label>
                 <label className="block">
                   <span className="text-sm text-gray-700">To Date</span>
                   <input
                     type="date"
                     value={activationForm.toDate}
-                    onChange={(e) => setActivationForm((prev) => ({ ...prev, toDate: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                    onChange={(e) => {
+                      setActivationForm((prev) => ({ ...prev, toDate: e.target.value }));
+                      setActivationFormErrors((prev) => ({ ...prev, toDate: undefined }));
+                    }}
+                    className={`mt-1 w-full rounded-lg border px-3 py-2 ${
+                      activationFormErrors.toDate ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {activationFormErrors.toDate ? (
+                    <p className="mt-1 text-xs text-red-600">{activationFormErrors.toDate}</p>
+                  ) : null}
                 </label>
               </div>
               <div className="mt-5 flex items-center justify-end gap-3">

@@ -128,6 +128,16 @@ import { motion } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { registerThunk } from '../store/slices/authSlice';
 import { selectRegisterStatus } from '../store/selectors/authSelectors';
+import { useNotifications } from '../components/notifications/NotificationProvider';
+import PasswordField from '../components/forms/common/PasswordField';
+import {
+  validateRegisterWizardState,
+  normalizeEmail,
+  digitsOnly,
+  trimInput,
+} from '../lib/validation';
+import { extractFieldErrorsFromCaughtError } from '../lib/validation/apiFieldErrors';
+import { PASSWORD_REQUIREMENTS_SUMMARY } from '../lib/passwordPolicy';
 
 function Register() {
   const [email, setEmail] = useState('');
@@ -159,65 +169,42 @@ function Register() {
 
   const [focusedField, setFocusedField] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const registerStatus = useAppSelector(selectRegisterStatus);
+  const { success: notifySuccess } = useNotifications();
 
   const handleRegister = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const mobileRegex = /^[6-9]\d{9}$/;
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    setSubmitError('');
+    const wizard = validateRegisterWizardState({
+      registrationType,
+      email,
+      mobile,
+      password,
+      confirmPassword,
+      influencerName,
+      influencerHouse,
+      influencerStreet,
+      influencerDistrict,
+      influencerState,
+      influencerPincode,
+      influencerPromoCode,
+      influencerInstagramProfileLink,
+      influencerYoutubeProfileLink,
+      schoolName,
+      schoolHouse,
+      schoolStreet,
+      schoolDistrict,
+      schoolState,
+      schoolPincode,
+      schoolHasMultipleBranches,
+      schoolBranchCode,
+    });
 
-    const nextErrors = {};
-
-    if (!email.trim()) nextErrors.email = 'Email is required.';
-    else if (!emailRegex.test(email.trim())) nextErrors.email = 'Enter a valid email address.';
-
-    if (!mobile.trim()) nextErrors.mobile = 'Mobile number is required.';
-    else if (!mobileRegex.test(mobile.trim())) {
-      nextErrors.mobile = 'Enter a valid 10-digit mobile number starting with 6-9.';
-    }
-
-    if (!registrationType) nextErrors.registrationType = 'Please select Schools or Promoters.';
-
-    if (!password) nextErrors.password = 'Password is required.';
-    else if (!passwordRegex.test(password)) {
-      nextErrors.password =
-        'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.';
-    }
-
-    if (!confirmPassword) nextErrors.confirmPassword = 'Confirm password is required.';
-    else if (password !== confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
-
-    if (registrationType === 'PROMOTOR') {
-      if (!influencerName.trim()) nextErrors.name = 'Name is required.';
-      if (!influencerHouse.trim()) nextErrors.house = 'House is required.';
-      if (!influencerStreet.trim()) nextErrors.street = 'Street is required.';
-      if (!influencerDistrict.trim()) nextErrors.district = 'District is required.';
-      if (!influencerState.trim()) nextErrors.state = 'State is required.';
-      if (!influencerPincode.trim()) nextErrors.pincode = 'Pincode is required.';
-      else if (!/^\d{6}$/.test(influencerPincode.trim()))
-        nextErrors.pincode = 'Please enter a valid 6-digit pincode.';
-    }
-
-    if (registrationType === 'SCHOOL') {
-      if (!schoolName.trim()) nextErrors.schoolName = 'School name is required.';
-      if (!schoolHouse.trim()) nextErrors.schoolHouse = 'House is required.';
-      if (!schoolStreet.trim()) nextErrors.schoolStreet = 'Street is required.';
-      if (!schoolDistrict.trim()) nextErrors.schoolDistrict = 'District is required.';
-      if (!schoolState.trim()) nextErrors.schoolState = 'State is required.';
-      if (!schoolPincode.trim()) nextErrors.schoolPincode = 'Pincode is required.';
-      else if (!/^\d{6}$/.test(schoolPincode.trim()))
-        nextErrors.schoolPincode = 'Please enter a valid 6-digit pincode.';
-
-      if (schoolHasMultipleBranches && !schoolBranchCode.trim()) {
-        nextErrors.schoolBranchCode = 'Branch code is required.';
-      }
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setFormErrors(nextErrors);
-      const firstKey = Object.keys(nextErrors)[0];
+    if (!wizard.ok) {
+      setFormErrors(wizard.errors);
+      const firstKey = Object.keys(wizard.errors)[0];
       setFocusedField(firstKey === 'registrationType' ? null : firstKey);
       return;
     }
@@ -225,51 +212,53 @@ function Register() {
     setFormErrors({});
 
     const payload = {
-      username: email.trim(),
-      password: password,
-      mobilenumber: mobile.trim(),
+      username: normalizeEmail(email),
+      password,
+      mobilenumber: digitsOnly(mobile),
       role: registrationType,
     };
 
     if (registrationType === 'PROMOTOR') {
-      payload.name = influencerName.trim();
-      payload.house = influencerHouse.trim();
-      payload.street = influencerStreet.trim();
-      payload.district = influencerDistrict.trim();
-      payload.state = influencerState.trim();
-      payload.pincode = influencerPincode.trim();
-      payload.address = `${influencerHouse.trim()}, ${influencerStreet.trim()}, ${influencerDistrict.trim()}`;
-      if (influencerPromoCode.trim()) payload.promoCode = influencerPromoCode.trim();
+      payload.name = trimInput(influencerName);
+      payload.house = trimInput(influencerHouse);
+      payload.street = trimInput(influencerStreet);
+      payload.district = trimInput(influencerDistrict);
+      payload.state = trimInput(influencerState);
+      payload.pincode = trimInput(influencerPincode);
+      payload.address = `${trimInput(influencerHouse)}, ${trimInput(influencerStreet)}, ${trimInput(influencerDistrict)}`;
+      if (trimInput(influencerPromoCode)) payload.promoCode = trimInput(influencerPromoCode);
       if (influencerPhoto) payload.photo = influencerPhoto;
-      if (influencerInstagramProfileLink.trim()) {
-        payload.instagramProfileLink = influencerInstagramProfileLink.trim();
+      if (trimInput(influencerInstagramProfileLink)) {
+        payload.instagramProfileLink = trimInput(influencerInstagramProfileLink);
       }
-      if (influencerYoutubeProfileLink.trim()) {
-        payload.youtubeProfileLink = influencerYoutubeProfileLink.trim();
+      if (trimInput(influencerYoutubeProfileLink)) {
+        payload.youtubeProfileLink = trimInput(influencerYoutubeProfileLink);
       }
     }
 
     if (registrationType === 'SCHOOL') {
-      payload.name = schoolName.trim();
-      payload.house = schoolHouse.trim();
-      payload.street = schoolStreet.trim();
-      payload.district = schoolDistrict.trim();
-      payload.state = schoolState.trim();
-      payload.pincode = schoolPincode.trim();
-      payload.address = `${schoolHouse.trim()}, ${schoolStreet.trim()}, ${schoolDistrict.trim()}`;
+      payload.name = trimInput(schoolName);
+      payload.house = trimInput(schoolHouse);
+      payload.street = trimInput(schoolStreet);
+      payload.district = trimInput(schoolDistrict);
+      payload.state = trimInput(schoolState);
+      payload.pincode = trimInput(schoolPincode);
+      payload.address = `${trimInput(schoolHouse)}, ${trimInput(schoolStreet)}, ${trimInput(schoolDistrict)}`;
       payload.hasMultipleBranches = !!schoolHasMultipleBranches;
-      payload.branchCode = schoolHasMultipleBranches ? schoolBranchCode.trim() : '';
+      payload.branchCode = schoolHasMultipleBranches ? trimInput(schoolBranchCode) : '';
       if (schoolLogo) payload.photo = schoolLogo;
     }
 
     try {
       const result = await dispatch(registerThunk(payload)).unwrap();
-      alert(result?.response || 'User registered successfully!');
+      notifySuccess(result?.response || 'User registered successfully.');
       navigate('/');
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Registration error:', error);
-      alert(error?.message || 'Something went wrong. Please try again later.');
+      setSubmitError(error?.message || 'Something went wrong. Please try again later.');
+      const apiFields = extractFieldErrorsFromCaughtError(error);
+      if (Object.keys(apiFields).length) {
+        setFormErrors((prev) => ({ ...prev, ...apiFields }));
+      }
     }
   };
 
@@ -313,7 +302,10 @@ function Register() {
             type="email"
             onChange={(e) => setEmail(e.target.value)}
             onFocus={() => setFocusedField('email')}
-            onBlur={() => setFocusedField(null)}
+            onBlur={(e) => {
+              setEmail(normalizeEmail(e.target.value));
+              setFocusedField(null);
+            }}
             className={`w-full p-4 border rounded-lg mb-4 text-lg ${
               formErrors.email
                 ? 'border-red-600'
@@ -330,7 +322,7 @@ function Register() {
           <motion.input
             whileFocus={{ scale: 1.02 }}
             value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
+            onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
             onFocus={() => setFocusedField('mobile')}
             onBlur={() => setFocusedField(null)}
             className={`w-full p-4 border rounded-lg mb-4 text-lg ${
@@ -708,74 +700,78 @@ function Register() {
               <motion.input
                 whileFocus={{ scale: 1.02 }}
                 value={influencerPromoCode}
-                onChange={(e) => setInfluencerPromoCode(e.target.value)}
-                className="w-full p-4 border border-green-300 rounded-lg mb-0 text-lg"
+                onChange={(e) => setInfluencerPromoCode(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
+                className={`w-full p-4 border rounded-lg mb-0 text-lg ${
+                  formErrors.promoCode ? 'border-red-600' : 'border-green-300'
+                }`}
                 placeholder="Promo code (optional)"
               />
+              {formErrors.promoCode ? (
+                <p className="text-xs text-red-600 mt-1">{formErrors.promoCode}</p>
+              ) : null}
 
               <motion.input
                 whileFocus={{ scale: 1.02 }}
                 value={influencerInstagramProfileLink}
                 onChange={(e) => setInfluencerInstagramProfileLink(e.target.value)}
-                className="w-full p-4 border border-green-300 rounded-lg mt-4 mb-4 text-lg"
+                className={`w-full p-4 border rounded-lg mt-4 mb-2 text-lg ${
+                  formErrors.instagram ? 'border-red-600' : 'border-green-300'
+                }`}
                 placeholder="Instagram profile link (optional)"
               />
+              {formErrors.instagram ? (
+                <p className="text-xs text-red-600 mb-2">{formErrors.instagram}</p>
+              ) : null}
 
               <motion.input
                 whileFocus={{ scale: 1.02 }}
                 value={influencerYoutubeProfileLink}
                 onChange={(e) => setInfluencerYoutubeProfileLink(e.target.value)}
-                className="w-full p-4 border border-green-300 rounded-lg mb-0 text-lg"
+                className={`w-full p-4 border rounded-lg mb-0 text-lg ${
+                  formErrors.youtube ? 'border-red-600' : 'border-green-300'
+                }`}
                 placeholder="YouTube profile link (optional)"
               />
+              {formErrors.youtube ? (
+                <p className="text-xs text-red-600 mt-1">{formErrors.youtube}</p>
+              ) : null}
             </div>
           )}
 
-          <motion.input
-            whileFocus={{ scale: 1.02 }}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onFocus={() => setFocusedField('password')}
-            onBlur={() => setFocusedField(null)}
-            className={`w-full p-4 border rounded-lg mb-4 text-lg ${
-              formErrors.password
-                ? 'border-red-600'
-                : focusedField === 'password'
-                  ? 'border-green-700'
-                  : 'border-green-300'
-            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
-            placeholder="Password"
-            type="password"
-            required
-          />
-          {formErrors.password && (
-            <p className="text-xs text-red-600 mt-1">{formErrors.password}</p>
-          )}
-          <motion.input
-            whileFocus={{ scale: 1.02 }}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            onFocus={() => setFocusedField('confirmPassword')}
-            onBlur={() => setFocusedField(null)}
-            className={`w-full p-4 border rounded-lg mb-6 text-lg ${
-              formErrors.confirmPassword
-                ? 'border-red-600'
-                : focusedField === 'confirmPassword'
-                  ? 'border-green-700'
-                  : 'border-green-300'
-            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
-            placeholder="Confirm Password"
-            type="password"
-            required
-          />
-          {formErrors.confirmPassword && (
-            <p className="text-xs text-red-600 mt-1">{formErrors.confirmPassword}</p>
-          )}
+          <div className="mb-4">
+            <PasswordField
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
+              error={formErrors.password}
+              showStrength={Boolean(password)}
+              showRequirementsHint
+              requirementsHint={PASSWORD_REQUIREMENTS_SUMMARY}
+              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-green-300 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-green-200"
+              placeholder="Password"
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="mb-6">
+            <PasswordField
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onFocus={() => setFocusedField('confirmPassword')}
+              onBlur={() => setFocusedField(null)}
+              error={formErrors.confirmPassword}
+              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-green-300 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-green-200"
+              placeholder="Confirm Password"
+              autoComplete="new-password"
+            />
+          </div>
+          {submitError ? <p className="text-sm text-red-600 mb-3">{submitError}</p> : null}
           <motion.button
+            type="button"
             whileHover={{ scale: 1.05 }}
             onClick={handleRegister}
             disabled={registerStatus === 'loading'}
-            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold"
+            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {registerStatus === 'loading' ? 'Registering...' : 'Register'}
           </motion.button>
