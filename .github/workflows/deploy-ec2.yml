@@ -1,0 +1,94 @@
+name: Deploy Frontend to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create production env file from GitHub secrets
+        env:
+          FRONTEND_ENV_FILE: ${{ secrets.FRONTEND_ENV_FILE }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: |
+          if [ -n "$FRONTEND_ENV_FILE" ]; then
+            printf "%s" "$FRONTEND_ENV_FILE" > .env.production
+            echo "Created .env.production from FRONTEND_ENV_FILE secret."
+          elif [ -n "$VITE_API_BASE_URL" ]; then
+            {
+              echo "VITE_API_BASE_URL=$VITE_API_BASE_URL"
+            } > .env.production
+            echo "Created .env.production from VITE_API_BASE_URL secret."
+          else
+            echo "No frontend env secrets supplied. Building with repository defaults."
+          fi
+
+      - name: Build app
+        run: npm run build
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key.pem
+          chmod 400 ~/.ssh/deploy_key.pem
+
+      - name: Upload build artifact
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+        run: |
+          tar --no-xattrs -czf /tmp/alpha-frontend-dist.tgz -C dist .
+          scp -o StrictHostKeyChecking=accept-new \
+            -P "${EC2_PORT:-22}" \
+            -i ~/.ssh/deploy_key.pem \
+            /tmp/alpha-frontend-dist.tgz \
+            "${EC2_USER}@${EC2_HOST}:/tmp/alpha-frontend-dist.tgz"
+
+      - name: Deploy on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+          DEPLOY_PATH: ${{ secrets.EC2_DEPLOY_PATH }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new \
+            -p "${EC2_PORT:-22}" \
+            -i ~/.ssh/deploy_key.pem \
+            "${EC2_USER}@${EC2_HOST}" \
+            "set -e; \
+             TARGET_PATH='${DEPLOY_PATH:-/var/www/alpha-frontend}'; \
+             TS=\$(date +%Y%m%d%H%M%S); \
+             sudo mkdir -p \"\$TARGET_PATH\"; \
+             if [ -d \"\$TARGET_PATH\" ] && [ \"\$(ls -A \"\$TARGET_PATH\" 2>/dev/null)\" ]; then \
+               sudo cp -a \"\$TARGET_PATH\" \"\${TARGET_PATH}.bak_\$TS\"; \
+             fi; \
+             sudo rm -rf \"\$TARGET_PATH\"/*; \
+             sudo tar -xzf /tmp/alpha-frontend-dist.tgz -C \"\$TARGET_PATH\"; \
+             sudo find \"\$TARGET_PATH\" -name '._*' -delete; \
+             sudo chown -R nginx:nginx \"\$TARGET_PATH\"; \
+             sudo nginx -t; \
+             sudo systemctl reload nginx;"
