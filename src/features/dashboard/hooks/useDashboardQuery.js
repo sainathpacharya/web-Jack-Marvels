@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDashBoardDetails } from '../../../api/dashboard';
+import { ROLE_IDS } from '../../../auth/session';
 import eventsCatalog from '../../../data/eventsCatalog.json';
 import { queryKeys } from '../../../lib/queryKeys';
 import { QUERY_BACKGROUND_SYNC, QUERY_GC, QUERY_STALE } from '../../../lib/queryConfig';
@@ -49,7 +50,7 @@ function buildFallbackDetails(isAdmin) {
 }
 
 async function fetchDashboard({ roleId, signal }) {
-  const isAdmin = Number(roleId) === 1;
+  const isAdmin = Number(roleId) === ROLE_IDS.ADMIN;
   const fallbackDetails = buildFallbackDetails(isAdmin);
   try {
     const apiDetails = await getDashBoardDetails({ signal });

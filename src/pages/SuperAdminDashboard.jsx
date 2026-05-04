@@ -10,6 +10,7 @@ import {
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logoutThunk } from '../store/slices/authSlice';
 import { selectRoleId } from '../store/selectors/authSelectors';
+import { ROLE_IDS } from '../auth/session';
 import { useSchoolsQuery } from '../features/schools/hooks/useSchoolsQuery';
 import { selectAllPromoters } from '../store/selectors/promoterSelectors';
 import { addPromoterLocal } from '../store/slices/promoterSlice';
@@ -36,8 +37,8 @@ export default function SuperAdminDashboard() {
   const userRoleId = useAppSelector(selectRoleId);
 
   useEffect(() => {
-    // RoleId 4 == Student: no access to the web application.
-    if (userRoleId === 4) {
+    // Student role has no access to the web application.
+    if (Number(userRoleId) === ROLE_IDS.STUDENT) {
       dispatch(logoutThunk());
       navigate('/');
     }

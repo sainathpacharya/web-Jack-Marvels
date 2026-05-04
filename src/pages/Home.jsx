@@ -86,7 +86,7 @@ const Home = () => {
   }, [navigate, userRoleId]);
 
   useEffect(() => {
-    // RoleId 4 == Student: no access to the web application.
+    // Student role has no access to the web application.
     if (Number(userRoleId) === ROLE_IDS.STUDENT) {
       dispatch(logoutThunk());
       navigate('/');

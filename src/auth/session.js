@@ -7,13 +7,14 @@ const REFRESH_TOKEN_KEY = 'alphavlogs.refreshToken';
 const ME_KEY = 'alphavlogs.me';
 const USER_KEY = 'user';
 export const ROLE_IDS = {
-  ADMIN: 1,
-  SCHOOL: 2,
-  PROMOTOR: 3,
-  PROMOTER: 3,
-  STUDENT: 4,
-  SUPER_ADMIN: 5,
-  INFLUENCER: 6,
+  SUPER_ADMIN: 1,
+  ADMIN: 2,
+  SCHOOL: 3,
+  PROMOTOR: 4,
+  PROMOTER: 4,
+  INFLUENCER: 5,
+  STUDENT: 6,
+  TEACHER: 7,
 };
 
 export function setSession({ accessToken, refreshToken, me }) {

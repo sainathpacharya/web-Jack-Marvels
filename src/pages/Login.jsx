@@ -29,6 +29,7 @@ function getDashboardPath(roleId) {
     case ROLE_IDS.INFLUENCER:
       return '/promoter';
     case ROLE_IDS.STUDENT:
+    case ROLE_IDS.TEACHER:
       return '/';
     default:
       return '/';

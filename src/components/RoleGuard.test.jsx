@@ -39,17 +39,32 @@ function renderWithRoutes({ initialPath, allow = [], contentText, roleId }) {
 
 describe('RoleGuard', () => {
   test('redirects students to /web-access-blocked and clears session', async () => {
-    renderWithRoutes({ initialPath: '/profile', allow: [1, 2, 3], contentText: 'Allowed', roleId: ROLE_IDS.STUDENT });
+    renderWithRoutes({
+      initialPath: '/profile',
+      allow: [ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN, ROLE_IDS.SCHOOL],
+      contentText: 'Allowed',
+      roleId: ROLE_IDS.STUDENT,
+    });
     expect(screen.getByText('Web Access Blocked')).toBeInTheDocument();
   });
 
   test('redirects unauthorized roles to /forbidden', async () => {
-    renderWithRoutes({ initialPath: '/profile', allow: [1], contentText: 'Allowed', roleId: 2 });
+    renderWithRoutes({
+      initialPath: '/profile',
+      allow: [ROLE_IDS.SUPER_ADMIN],
+      contentText: 'Allowed',
+      roleId: ROLE_IDS.ADMIN,
+    });
     expect(screen.getByText('Forbidden')).toBeInTheDocument();
   });
 
   test('renders children when role is allowed', async () => {
-    renderWithRoutes({ initialPath: '/profile', allow: [1, 2], contentText: 'Allowed', roleId: 1 });
+    renderWithRoutes({
+      initialPath: '/profile',
+      allow: [ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN],
+      contentText: 'Allowed',
+      roleId: ROLE_IDS.SUPER_ADMIN,
+    });
 
     expect(screen.getByText('Allowed')).toBeInTheDocument();
   });

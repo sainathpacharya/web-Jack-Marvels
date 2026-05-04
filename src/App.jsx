@@ -63,7 +63,7 @@ function App() {
           <Route
             path="/profile"
             element={(
-              <RoleGuard allow={[ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN, ROLE_IDS.SCHOOL, ROLE_IDS.PROMOTOR, ROLE_IDS.INFLUENCER]}>
+              <RoleGuard allow={[ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN, ROLE_IDS.SCHOOL, ROLE_IDS.PROMOTOR, ROLE_IDS.INFLUENCER, ROLE_IDS.TEACHER]}>
                 <ProfileScreen />
               </RoleGuard>
             )}

@@ -59,7 +59,7 @@ export default function PromoterDashboard() {
   const roleTitle = isInfluencer ? 'INFLUENCER' : 'PROMOTER';
 
   useEffect(() => {
-    // RoleId 4 == Student: no access to the web application.
+    // Student role has no access to the web application.
     if (Number(userRoleId) === ROLE_IDS.STUDENT) {
       dispatch(logoutThunk());
       navigate('/');

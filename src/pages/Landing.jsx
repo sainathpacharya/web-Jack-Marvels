@@ -8,7 +8,7 @@ import singingAnimation from '../animations/singingAnimatinon.json'
 import { login as apiLogin } from '../api/auth';
 import { getPublicSummaryCount } from '../api/dashboard';
 import { deriveMustChangePassword } from '../auth/passwordFlags';
-import { clearSession, setSession } from '../auth/session';
+import { clearSession, ROLE_IDS, setSession } from '../auth/session';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { hydrateAuth } from '../store/slices/authSlice';
 import { fetchEvents } from '../store/slices/eventsSlice';
@@ -159,15 +159,16 @@ export default function Landing() {
     // Routing is controlled ONLY by roleId.
     const id = roleId == null ? null : Number(roleId);
     switch (id) {
-      case 1:
+      case ROLE_IDS.ADMIN:
         return '/admin';
-      case 5:
+      case ROLE_IDS.SUPER_ADMIN:
         return '/super-admin';
-      case 2:
+      case ROLE_IDS.SCHOOL:
         return '/school';
-      case 3:
+      case ROLE_IDS.PROMOTOR:
+      case ROLE_IDS.INFLUENCER:
         return '/promoter';
-      case 4:
+      case ROLE_IDS.STUDENT:
         // Students should not access the web app.
         return '/';
       default:
@@ -209,7 +210,7 @@ export default function Landing() {
       setSession({ accessToken, refreshToken, me: userForStorage });
       dispatch(hydrateAuth());
       setShowModal(false);
-      if (Number(userForStorage?.roleId) === 4) {
+      if (Number(userForStorage?.roleId) === ROLE_IDS.STUDENT) {
         clearSession();
         localStorage.removeItem('user');
         alert('Student accounts do not have access to the web application.');
