@@ -32,8 +32,10 @@ const StudentsPage = lazy(() => import('./pages/school/StudentsPage'));
 const SubscriptionPage = lazy(() => import('./pages/school/SubscriptionPage'));
 const ForceChangePassword = lazy(() => import('./pages/ForceChangePassword'));
 
-// Basename for React Router (no trailing slash). Required for GitHub Pages subpath.
-const basename = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
+// Use root routing in local dev; use Vite base path for deployments (e.g. GitHub Pages).
+const basename = import.meta.env.DEV
+  ? '/'
+  : ((import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/');
 
 function App() {
   const dispatch = useAppDispatch();

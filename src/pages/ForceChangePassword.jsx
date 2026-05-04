@@ -37,8 +37,8 @@ export default function ForceChangePassword() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const mustChangePassword = useAppSelector(selectMustChangePassword);
   const roleId = useAppSelector(selectRoleId);
-  const changePasswordStatus = useAppSelector((s) => s.auth.changePasswordStatus);
-  const changePasswordError = useAppSelector((s) => s.auth.changePasswordError);
+  const changePasswordStatus = useAppSelector((s) => s?.auth?.changePasswordStatus ?? 'idle');
+  const changePasswordError = useAppSelector((s) => s?.auth?.changePasswordError ?? null);
 
   const {
     register,

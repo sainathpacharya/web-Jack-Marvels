@@ -3,7 +3,14 @@ import { clearSession, getAccessToken, getCurrentUser, getMe, getRefreshToken, s
 
 export async function login({ username, password }) {
   // Backend login DTO expects { username, password, mobilenumber }.
-  const data = await apiClient.post('/api/authenticateUser', { username, password, mobilenumber: '' }, { auth: false });
+  // Prefer the current route and fall back to the legacy alias.
+  const payload = { username, password, mobilenumber: '' };
+  let data;
+  try {
+    data = await apiClient.post('/api/auth/login', payload, { auth: false });
+  } catch {
+    data = await apiClient.post('/api/authenticateUser', payload, { auth: false });
+  }
 
   // Backend returns an application-level ResponseDTO inside a 200 HTTP response.
   if (typeof data?.statusCode === 'number' && data.statusCode !== 200) {
@@ -38,7 +45,7 @@ export async function changePassword({ currentPassword, newPassword }, { signal 
     currentPassword: String(currentPassword ?? ''),
     newPassword: String(newPassword ?? ''),
   };
-  const data = await apiClient.post('/api/changePassword', body, { signal });
+  const data = await apiClient.post('/api/auth/change-password', body, { signal });
 
   if (typeof data?.statusCode === 'number' && data.statusCode !== 200) {
     throw new Error(data?.response || data?.message || 'Password change failed');

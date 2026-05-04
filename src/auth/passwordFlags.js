@@ -3,15 +3,18 @@
  * Backend should set one of these after login (JWT claims or user DTO).
  */
 export function deriveMustChangePassword(user = {}, authPayload = {}) {
-  if (authPayload.mustChangePassword === true) return true;
-  if (authPayload.passwordChangeRequired === true) return true;
-  if (authPayload.forcePasswordChange === true) return true;
+  const safeUser = user ?? {};
+  const safeAuthPayload = authPayload ?? {};
 
-  if (user.mustChangePassword === true) return true;
-  if (user.passwordChangeRequired === true) return true;
-  if (user.forcePasswordChange === true) return true;
-  if (user.isFirstLogin === true) return true;
-  if (user.firstLogin === true) return true;
+  if (safeAuthPayload.mustChangePassword === true) return true;
+  if (safeAuthPayload.passwordChangeRequired === true) return true;
+  if (safeAuthPayload.forcePasswordChange === true) return true;
+
+  if (safeUser.mustChangePassword === true) return true;
+  if (safeUser.passwordChangeRequired === true) return true;
+  if (safeUser.forcePasswordChange === true) return true;
+  if (safeUser.isFirstLogin === true) return true;
+  if (safeUser.firstLogin === true) return true;
 
   return false;
 }

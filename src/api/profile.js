@@ -21,12 +21,13 @@ function normalizeProfile(raw) {
 }
 
 function mapPayload(form) {
+  const safeForm = form ?? {};
   return {
-    fullName: form.fullName?.trim(),
-    email: form.email?.trim(),
-    mobileNumber: form.phone?.trim(),
-    address: form.address?.trim(),
-    profilePicture: form.profilePicture || '',
+    fullName: safeForm.fullName?.trim(),
+    email: safeForm.email?.trim(),
+    mobileNumber: safeForm.phone?.trim(),
+    address: safeForm.address?.trim(),
+    profilePicture: safeForm.profilePicture || '',
   };
 }
 

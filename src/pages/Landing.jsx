@@ -18,9 +18,9 @@ import { getAssetUrl } from '../services/eventsService';
 export default function Landing() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const events = useAppSelector((state) => state.events.events);
-  const eventsLoading = useAppSelector((state) => state.events.loading);
-  const eventsError = useAppSelector((state) => state.events.error);
+  const events = useAppSelector((state) => state?.events?.events ?? []);
+  const eventsLoading = useAppSelector((state) => state?.events?.loading ?? false);
+  const eventsError = useAppSelector((state) => state?.events?.error ?? null);
   const eventsSectionRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
   const [username, setUsername] = useState("");

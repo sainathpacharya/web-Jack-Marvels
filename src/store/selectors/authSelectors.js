@@ -1,6 +1,18 @@
 import { createSelector } from 'reselect';
 
-const selectAuthState = (state) => state.auth;
+const EMPTY_AUTH_STATE = {
+  status: 'idle',
+  error: null,
+  registerStatus: 'idle',
+  registerError: null,
+  isAuthenticated: false,
+  user: null,
+  roleId: null,
+  roleName: '',
+  mustChangePassword: false,
+};
+
+const selectAuthState = (state) => state?.auth ?? EMPTY_AUTH_STATE;
 
 export const selectAuthStatus = createSelector([selectAuthState], (auth) => auth.status);
 export const selectAuthError = createSelector([selectAuthState], (auth) => auth.error);
