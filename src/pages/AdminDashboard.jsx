@@ -1581,7 +1581,6 @@ export default function AdminDashboard() {
                                 <input
                                   type="checkbox"
                                   checked={isActive}
-                                  disabled={!canManageAdminData}
                                   aria-label={`Set influencer ${row.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
                                   disabled={!canManageAdminData || updateInfluencerStatusMutation.isPending}
                                   onChange={(e) => handleToggleInfluencerStatus(row, e.target.checked)}
