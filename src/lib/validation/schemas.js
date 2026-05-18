@@ -148,7 +148,7 @@ const alphanumericRequired = z
  */
 export const registerWizardSchema = z
   .object({
-    registrationType: z.enum(['PROMOTOR', 'SCHOOL']),
+    registrationType: z.enum(['PROMOTOR', 'PROMOTER', 'SCHOOL']),
     email: z.string(),
     mobile: z.string(),
     password: z.string(),
@@ -190,7 +190,7 @@ export const registerWizardSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['confirmPassword'], message: 'Passwords do not match.' });
     }
 
-    if (data.registrationType === 'PROMOTOR') {
+    if (data.registrationType === 'PROMOTOR' || data.registrationType === 'PROMOTER') {
       const n = personNameSchema.safeParse(data.influencerName ?? '');
       if (!n.success) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['name'], message: n.error.issues[0]?.message });

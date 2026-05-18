@@ -29,21 +29,6 @@ const initialSchoolForm = () => ({
   contactPhone: '',
 });
 
-const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
-const getPromoterSchools = () => {
-  try {
-    const raw = localStorage.getItem(PROMOTER_SCHOOLS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-const savePromoterSchool = (school) => {
-  const list = getPromoterSchools();
-  list.push(school);
-  localStorage.setItem(PROMOTER_SCHOOLS_KEY, JSON.stringify(list));
-};
-
 const getTotalAddress = (school) =>
   [school.address, school.city, school.state, school.pincode].filter(Boolean).join(', ');
 
@@ -51,7 +36,7 @@ const isSchoolActive = (school) => (school.status || 'active') === 'active';
 
 export default function PromoterDashboard() {
   const navigate = useNavigate();
-  const { success, error: notifyError, info } = useNotifications();
+  const { success, error: notifyError } = useNotifications();
   const { prefetchByPath } = useNavigationPrefetch();
   const dispatch = useAppDispatch();
   const userRoleId = useAppSelector(selectRoleId);
@@ -69,18 +54,12 @@ export default function PromoterDashboard() {
   const [activeNav, setActiveNav] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const SCHOOLS_PAGE_SIZE = 10;
-  const [localSchools, setLocalSchools] = useState([]);
   const schoolQuery = { scope: 'promoter', limit: SCHOOLS_PAGE_SIZE };
   const schoolsQuery = useInfiniteSchoolsQuery({ ...schoolQuery, fallbackToStatic: true });
   const createSchoolMutation = useCreateSchoolMutation();
   const schoolsPages = schoolsQuery.data?.pages || [];
   const schoolsAdded = schoolsPages.flatMap((page) => page.items || []);
-  const mergedSchools = useMemo(() => {
-    const byId = new Map();
-    schoolsAdded.forEach((school) => byId.set(String(school.id), school));
-    localSchools.forEach((school) => byId.set(String(school.id), school));
-    return Array.from(byId.values());
-  }, [localSchools, schoolsAdded]);
+  const mergedSchools = useMemo(() => schoolsAdded, [schoolsAdded]);
   const schoolsListMeta = schoolsPages[schoolsPages.length - 1] || { totalPages: 1, page: 1, limit: SCHOOLS_PAGE_SIZE };
   const schoolsListLoading = schoolsQuery.isLoading || schoolsQuery.isFetching;
   const schoolsListError = schoolsQuery.error?.message || null;
@@ -168,20 +147,12 @@ export default function PromoterDashboard() {
       status: 'active',
     };
 
-    const school = {
-      id: Date.now(),
-      ...requestPayload,
-      addedAt: new Date().toISOString().slice(0, 10),
-      addedByPromoterId: promoterId,
-    };
-
     try {
       await createSchoolMutation.mutateAsync({ payload: requestPayload, userId: promoterId, userRole: 'promoter' });
-      success('School created successfully');
-    } catch {
-      setLocalSchools((previous) => [school, ...previous]);
-      savePromoterSchool(school);
-      info('School saved locally. Sync will continue in background.');
+      success('School added successfully.');
+    } catch (e) {
+      notifyError(e?.message || 'Failed to create school on server.');
+      return;
     }
     setSchoolForm(initialSchoolForm());
     setShowAddSchool(false);

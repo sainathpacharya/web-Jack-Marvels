@@ -3,12 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logoutThunk } from '../store/slices/authSlice';
 import { selectRoleId } from '../store/selectors/authSelectors';
-import { ROLE_IDS } from '../auth/session';
+import { getMe, ROLE_IDS } from '../auth/session';
 import {
   useCreateSchoolMutation,
   useDeleteSchoolMutation,
   useSchoolsQuery,
+  useUpdateSchoolStatusMutation,
 } from '../features/schools/hooks/useSchoolsQuery';
+import {
+  useUpdateInfluencerStatusMutation,
+  useUpdatePromotorStatusMutation,
+} from '../features/masters/hooks/useMasterStatusMutation';
+import { isServerMasterId } from '../api/masters';
 import { useEventsQuery, useUpdateEventStatusMutation } from '../features/events/hooks/useEventsQuery';
 import {
   useCreateSuperAdminMutation,
@@ -18,7 +24,9 @@ import {
 } from '../features/superAdmins/hooks/useSuperAdminsQuery';
 import useDebouncedValue from '../hooks/useDebouncedValue';
 import { addPromoterLocal, updatePromoterStatusLocal } from '../store/slices/promoterSlice';
+import { addInfluencerLocal, updateInfluencerStatusLocal } from '../store/slices/influencerSlice';
 import { selectAllPromoters } from '../store/selectors/promoterSelectors';
+import { selectAllInfluencers } from '../store/selectors/influencerSelectors';
 import {
   STATIC_TOTAL_STUDENTS,
   STATIC_RECENT_UPLOADS,
@@ -46,6 +54,7 @@ import { eventDateRangeSchema } from '../lib/validation/schemas';
 import { zodErrorToFlatFieldErrors } from '../lib/validation/zodUtils';
 
 const AdminPromoterFormModal = lazy(() => import('../components/forms/admin/AdminPromoterFormModal'));
+const AdminInfluencerFormModal = lazy(() => import('../components/forms/admin/AdminInfluencerFormModal'));
 const AdminSchoolFormModal = lazy(() => import('../components/forms/admin/AdminSchoolFormModal'));
 
 const SIDEBAR_ITEMS = [
@@ -88,6 +97,8 @@ const INITIAL_PROMOTER_FORM = {
   youtubeProfileLink: '',
 };
 
+const INITIAL_INFLUENCER_FORM = { ...INITIAL_PROMOTER_FORM };
+
 /** Partner accounts are super admins (same API as `/api/super-admins`). */
 const INITIAL_PARTNER_FORM = {
   name: '',
@@ -98,7 +109,7 @@ const INITIAL_PARTNER_FORM = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { success, error: notifyError, info } = useNotifications();
+  const { success, error: notifyError } = useNotifications();
   const { prefetchByPath } = useNavigationPrefetch();
   const location = useLocation();
   const dispatch = useAppDispatch();
@@ -126,6 +137,9 @@ export default function AdminDashboard() {
   const schoolsQuery = useSchoolsQuery({ ...schoolQuery, fallbackToStatic: true });
   const createSchoolMutation = useCreateSchoolMutation();
   const deleteSchoolMutation = useDeleteSchoolMutation();
+  const updateSchoolStatusMutation = useUpdateSchoolStatusMutation();
+  const updatePromotorStatusMutation = useUpdatePromotorStatusMutation();
+  const updateInfluencerStatusMutation = useUpdateInfluencerStatusMutation();
   const schoolsList = schoolsQuery.data || { items: [], total: 0, page: schoolsPage, limit: SCHOOLS_PAGE_SIZE, totalPages: 1 };
   const schoolsAdded = schoolsList.items;
   const mergedSchoolsAdded = useMemo(() => {
@@ -184,6 +198,16 @@ export default function AdminDashboard() {
     promotersStartIndex + PROMOTERS_PAGE_SIZE
   );
 
+  const influencersAdded = useAppSelector(selectAllInfluencers);
+  const INFLUENCERS_PAGE_SIZE = 10;
+  const [influencersPage, setInfluencersPage] = useState(1);
+  const influencersTotalPages = Math.max(1, Math.ceil(influencersAdded.length / INFLUENCERS_PAGE_SIZE));
+  const influencersStartIndex = (influencersPage - 1) * INFLUENCERS_PAGE_SIZE;
+  const pagedInfluencersAdded = influencersAdded.slice(
+    influencersStartIndex,
+    influencersStartIndex + INFLUENCERS_PAGE_SIZE
+  );
+
   const twoLineEllipsisStyle = {
     display: '-webkit-box',
     WebkitLineClamp: 2,
@@ -195,10 +219,19 @@ export default function AdminDashboard() {
     setPromotersPage((p) => Math.min(p, Math.max(1, Math.ceil(promotersAdded.length / PROMOTERS_PAGE_SIZE))));
   }, [promotersAdded.length]);
 
+  useEffect(() => {
+    setInfluencersPage((p) => Math.min(p, Math.max(1, Math.ceil(influencersAdded.length / INFLUENCERS_PAGE_SIZE))));
+  }, [influencersAdded.length]);
+
   const [showAddPromoter, setShowAddPromoter] = useState(false);
   const [promoterForm, setPromoterForm] = useState(INITIAL_PROMOTER_FORM);
   const [promoterFormErrors, setPromoterFormErrors] = useState({});
   const [promoterSubmitting, setPromoterSubmitting] = useState(false);
+
+  const [showAddInfluencer, setShowAddInfluencer] = useState(false);
+  const [influencerForm, setInfluencerForm] = useState(INITIAL_INFLUENCER_FORM);
+  const [influencerFormErrors, setInfluencerFormErrors] = useState({});
+  const [influencerSubmitting, setInfluencerSubmitting] = useState(false);
 
   const PARTNERS_PAGE_SIZE = 10;
   const [partnersPage, setPartnersPage] = useState(1);
@@ -253,8 +286,93 @@ export default function AdminDashboard() {
     setPartnersPage((p) => Math.min(p, Math.max(1, tp)));
   }, [partnersListMeta?.totalPages]);
 
-  const updatePromoterStatus = (id, nextStatus) => {
+  const applyLocalPromoterStatus = (id, nextStatus) => {
     dispatch(updatePromoterStatusLocal({ id, status: nextStatus }));
+  };
+
+  const applyLocalInfluencerStatus = (id, nextStatus) => {
+    dispatch(updateInfluencerStatusLocal({ id, status: nextStatus }));
+  };
+
+  const handleTogglePromoterStatus = async (row, checked) => {
+    if (!canManageAdminData) {
+      notifyError('Only admin can change promoter status.');
+      return;
+    }
+    const nextStatus = checked ? 'active' : 'inactive';
+    const active = checked;
+    if (!isServerMasterId(row.id)) {
+      applyLocalPromoterStatus(row.id, nextStatus);
+      return;
+    }
+    try {
+      await updatePromotorStatusMutation.mutateAsync({ id: row.id, active });
+      applyLocalPromoterStatus(row.id, nextStatus);
+      success(active ? 'Promoter activated.' : 'Promoter deactivated.');
+    } catch (e) {
+      notifyError(e?.message || 'Could not update promoter status.');
+    }
+  };
+
+  const handleToggleInfluencerStatus = async (row, checked) => {
+    if (!canManageAdminData) {
+      notifyError('Only admin can change influencer status.');
+      return;
+    }
+    const nextStatus = checked ? 'active' : 'inactive';
+    const active = checked;
+    if (!isServerMasterId(row.id)) {
+      applyLocalInfluencerStatus(row.id, nextStatus);
+      return;
+    }
+    try {
+      await updateInfluencerStatusMutation.mutateAsync({ id: row.id, active });
+      applyLocalInfluencerStatus(row.id, nextStatus);
+      success(active ? 'Influencer activated.' : 'Influencer deactivated.');
+    } catch (e) {
+      notifyError(e?.message || 'Could not update influencer status.');
+    }
+  };
+
+  const handleAddInfluencer = () => {
+    if (!canManageAdminData) {
+      notifyError('Super admin has view-only access for this screen.');
+      return;
+    }
+    const errors = validateAdminPromoterForm(influencerForm);
+    setInfluencerFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    setInfluencerSubmitting(true);
+    const name = influencerForm.name?.trim();
+    const email = influencerForm.email?.trim();
+    const phoneRaw = influencerForm.phone?.trim().replace(/\s/g, '');
+    const pincode = influencerForm.pincode?.trim();
+
+    const newInfluencer = {
+      id: Date.now(),
+      name,
+      email,
+      phone: phoneRaw,
+      address: influencerForm.address?.trim() || '',
+      city: influencerForm.city?.trim() || '',
+      state: influencerForm.state?.trim() || '',
+      pincode: pincode || '',
+      referralCode: influencerForm.referralCode?.trim() || '',
+      promoCode: influencerForm.promoCode?.trim() || '',
+      instagramProfileLink: influencerForm.instagramProfileLink?.trim() || '',
+      youtubeProfileLink: influencerForm.youtubeProfileLink?.trim() || '',
+      status: 'active',
+      addedAt: new Date().toISOString().slice(0, 10),
+    };
+
+    dispatch(addInfluencerLocal(newInfluencer));
+    setShowAddInfluencer(false);
+    setInfluencerForm(INITIAL_INFLUENCER_FORM);
+    setInfluencerFormErrors({});
+    setInfluencerSubmitting(false);
+    success('Influencer added successfully.');
   };
 
   const handleCreatePartner = async () => {
@@ -393,18 +511,6 @@ export default function AdminDashboard() {
     setSchoolSubmitting(true);
     const name = schoolForm.name?.trim();
 
-    const studentsCountRaw = schoolForm.studentsCount?.toString().trim();
-    let studentsCountValue = 0;
-    if (studentsCountRaw) {
-      const parsed = parseInt(studentsCountRaw, 10);
-      if (Number.isNaN(parsed) || parsed < 0) {
-        setSchoolFormErrors((prev) => ({ ...prev, studentsCount: 'Number of students must be 0 or greater.' }));
-        setSchoolSubmitting(false);
-        return;
-      }
-      studentsCountValue = parsed;
-    }
-
     const address = schoolForm.address?.trim();
     const city = schoolForm.city?.trim();
     const state = schoolForm.state?.trim();
@@ -425,22 +531,17 @@ export default function AdminDashboard() {
       status: 'active',
     };
 
-    const newSchool = {
-      id: Date.now(),
-      ...requestPayload,
-      addedAt: new Date().toISOString().slice(0, 10),
-      studentsCount: studentsCountValue,
-      // Admin-created schools are not associated with a promoter discount.
-      addedByPromoterId: null,
-    };
+    const me = getMe();
+    const adminUserId = me?.id ?? 1;
 
     try {
-      await createSchoolMutation.mutateAsync({ payload: requestPayload, userId: 1, userRole: 'admin' });
+      await createSchoolMutation.mutateAsync({ payload: requestPayload, userId: adminUserId, userRole: 'admin' });
       setSchoolsPage(1);
-      success('School created successfully.');
-    } catch {
-      setLocalSchools((previous) => [newSchool, ...previous]);
-      info('School saved locally. Sync will continue in background.');
+      success('School added successfully.');
+    } catch (e) {
+      notifyError(e?.message || 'Failed to create school on server.');
+      setSchoolSubmitting(false);
+      return;
     }
 
     setShowAddSchool(false);
@@ -462,9 +563,8 @@ export default function AdminDashboard() {
       await deleteSchoolMutation.mutateAsync({ schoolId: id, userRole: 'admin' });
       setSchoolsPage(1);
       success('School deleted successfully.');
-    } catch {
-      setLocalSchools((previous) => previous.filter((school) => school.id !== id));
-      info('Delete synced locally; server sync will retry.');
+    } catch (e) {
+      notifyError(e?.message || 'Failed to delete school.');
     }
   };
 
@@ -595,17 +695,31 @@ export default function AdminDashboard() {
     setEditSchoolSubmitting(false);
   };
 
-  const updateSchoolStatus = (id, nextStatus) => {
+  const handleToggleSchoolStatus = async (school, checked) => {
     if (!canManageAdminData) {
       notifyError('Only admin can update school status.');
       return;
     }
+    const active = checked;
+    const nextStatus = checked ? 'active' : 'inactive';
+    const id = school.id;
 
-    setLocalSchools((previous) =>
-      previous.map((school) =>
-        school.id === id ? { ...school, status: nextStatus === 'inactive' ? 'inactive' : 'active' } : school
-      )
-    );
+    if (!isServerMasterId(id)) {
+      setLocalSchools((previous) =>
+        previous.map((s) => (s.id === id ? { ...s, status: nextStatus } : s))
+      );
+      return;
+    }
+
+    try {
+      await updateSchoolStatusMutation.mutateAsync({ schoolId: id, active });
+      setLocalSchools((previous) =>
+        previous.map((s) => (String(s.id) === String(id) ? { ...s, status: nextStatus } : s))
+      );
+      success(active ? 'School activated.' : 'School deactivated.');
+    } catch (e) {
+      notifyError(e?.message || 'Could not update school status.');
+    }
   };
 
   const getTotalAddress = (s) =>
@@ -1065,9 +1179,8 @@ export default function AdminDashboard() {
                                   type="checkbox"
                                   checked={isActive}
                                   aria-label={`Set promoter ${p.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
-                                  onChange={(e) =>
-                                    updatePromoterStatus(p.id, e.target.checked ? 'active' : 'inactive')
-                                  }
+                                  disabled={!canManageAdminData || updatePromotorStatusMutation.isPending}
+                                  onChange={(e) => handleTogglePromoterStatus(p, e.target.checked)}
                                 />
                               </label>
                             </td>
@@ -1250,9 +1363,9 @@ export default function AdminDashboard() {
                                   <input
                                     type="checkbox"
                                     checked={isActive}
-                                    disabled={!canManageAdminData}
+                                    disabled={!canManageAdminData || updateSchoolStatusMutation.isPending}
                                     aria-label={`Set school ${s.name} status to ${isActive ? 'inactive' : 'active'}`}
-                                    onChange={(e) => updateSchoolStatus(s.id, e.target.checked ? 'active' : 'inactive')}
+                                    onChange={(e) => handleToggleSchoolStatus(s, e.target.checked)}
                                   />
                               </label>
                             </td>
@@ -1386,22 +1499,145 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">Influencers</h2>
-                <p className="text-sm text-gray-500">Manage influencer records from this section.</p>
+                <p className="text-sm text-gray-500">Add an influencer (admin) and it will appear below.</p>
               </div>
               <button
                 type="button"
                 disabled={!canManageAdminData}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => {
-                  if (!canManageAdminData) notifyError('Only admin can add influencers.');
+                  if (!canManageAdminData) {
+                    notifyError('Only admin can add influencers.');
+                    return;
+                  }
+                  setInfluencerForm(INITIAL_INFLUENCER_FORM);
+                  setInfluencerFormErrors({});
+                  setShowAddInfluencer(true);
                 }}
               >
                 Add Influencer
               </button>
             </div>
-            <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-gray-500">
-              No influencers added yet.
+            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-700">
+                    <tr>
+                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
+                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Name</th>
+                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile number</th>
+                      <th className="px-5 py-3 text-left font-semibold max-w-[180px] whitespace-normal">Email</th>
+                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Promocode</th>
+                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {influencersAdded.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-8 text-gray-500">
+                          No influencers added yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedInfluencersAdded.map((row, idx) => {
+                        const isActive = (row.status || 'active') === 'active';
+                        return (
+                          <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="px-5 py-4 whitespace-nowrap">{influencersStartIndex + idx + 1}</td>
+                            <td className="px-5 py-4">
+                              <span style={twoLineEllipsisStyle} className="font-semibold text-gray-800">
+                                {row.name || '-'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                              {row.phone ? (
+                                <span style={twoLineEllipsisStyle}>{row.phone}</span>
+                              ) : (
+                                <span style={twoLineEllipsisStyle} className="text-gray-400">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 text-gray-700 max-w-[180px] whitespace-normal">
+                              {row.email ? (
+                                <span style={twoLineEllipsisStyle}>{row.email}</span>
+                              ) : (
+                                <span style={twoLineEllipsisStyle} className="text-gray-400">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                              {row.promoCode ? (
+                                <span style={twoLineEllipsisStyle}>{row.promoCode}</span>
+                              ) : (
+                                <span style={twoLineEllipsisStyle} className="text-gray-400">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                                <input
+                                  type="checkbox"
+                                  checked={isActive}
+                                  disabled={!canManageAdminData}
+                                  aria-label={`Set influencer ${row.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
+                                  disabled={!canManageAdminData || updateInfluencerStatusMutation.isPending}
+                                  onChange={(e) => handleToggleInfluencerStatus(row, e.target.checked)}
+                                />
+                              </label>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {influencersAdded.length > INFLUENCERS_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setInfluencersPage((p) => Math.max(1, p - 1))}
+                  disabled={influencersPage <= 1}
+                  className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <div className="text-sm text-gray-600">
+                  Page {influencersPage} of {influencersTotalPages}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInfluencersPage((p) => Math.min(influencersTotalPages, p + 1))}
+                  disabled={influencersPage >= influencersTotalPages}
+                  className="px-3 py-1 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+
+            {showAddInfluencer && (
+              <Suspense fallback={<div className="fixed inset-0 z-40 bg-black/40" />}>
+                <AdminInfluencerFormModal
+                  value={influencerForm}
+                  errors={influencerFormErrors}
+                  submitting={influencerSubmitting}
+                  onChange={(field, value) => setInfluencerForm((prev) => ({ ...prev, [field]: value }))}
+                  onCancel={() => {
+                    setShowAddInfluencer(false);
+                    setInfluencerForm(INITIAL_INFLUENCER_FORM);
+                    setInfluencerFormErrors({});
+                    setInfluencerSubmitting(false);
+                  }}
+                  onSubmit={handleAddInfluencer}
+                />
+              </Suspense>
+            )}
           </div>
         )}
 

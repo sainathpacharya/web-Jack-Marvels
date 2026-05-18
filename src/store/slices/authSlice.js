@@ -65,7 +65,8 @@ export const loginThunk = createAsyncThunk(
       const mustChangePassword = deriveMustChangePassword(user, auth);
       const userForStorage = {
         ...user,
-        role: user?.roleName,
+        // Preserve canonical role label for downstream header mapping and guards.
+        role: user?.roleName ?? user?.role ?? '',
         mustChangePassword,
       };
       const roleId = Number(userForStorage?.roleId ?? userForStorage?.role_id ?? 0) || null;

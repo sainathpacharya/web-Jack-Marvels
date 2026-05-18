@@ -139,12 +139,17 @@ import {
 import { extractFieldErrorsFromCaughtError } from '../lib/validation/apiFieldErrors';
 import { PASSWORD_REQUIREMENTS_SUMMARY } from '../lib/passwordPolicy';
 
+const REGISTRATION_TYPES = {
+  SCHOOL: 'SCHOOL',
+  PROMOTER: 'PROMOTOR',
+};
+
 function Register() {
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [registrationType, setRegistrationType] = useState('PROMOTOR');
+  const [registrationType, setRegistrationType] = useState(REGISTRATION_TYPES.PROMOTER);
   const [influencerName, setInfluencerName] = useState('');
   const [influencerHouse, setInfluencerHouse] = useState('');
   const [influencerStreet, setInfluencerStreet] = useState('');
@@ -211,14 +216,17 @@ function Register() {
 
     setFormErrors({});
 
+    const normalizedRegistrationType =
+      registrationType === 'PROMOTER' ? REGISTRATION_TYPES.PROMOTER : registrationType;
+
     const payload = {
       username: normalizeEmail(email),
       password,
       mobilenumber: digitsOnly(mobile),
-      role: registrationType,
+      role: normalizedRegistrationType,
     };
 
-    if (registrationType === 'PROMOTOR') {
+    if (normalizedRegistrationType === REGISTRATION_TYPES.PROMOTER) {
       payload.name = trimInput(influencerName);
       payload.house = trimInput(influencerHouse);
       payload.street = trimInput(influencerStreet);
@@ -236,7 +244,7 @@ function Register() {
       }
     }
 
-    if (registrationType === 'SCHOOL') {
+    if (normalizedRegistrationType === REGISTRATION_TYPES.SCHOOL) {
       payload.name = trimInput(schoolName);
       payload.house = trimInput(schoolHouse);
       payload.street = trimInput(schoolStreet);
@@ -344,12 +352,12 @@ function Register() {
               <button
                 type="button"
                 onClick={() => {
-                  setRegistrationType('SCHOOL');
+                  setRegistrationType(REGISTRATION_TYPES.SCHOOL);
                   setFormErrors({});
                   setFocusedField(null);
                 }}
                 className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
-                  registrationType === 'SCHOOL'
+                  registrationType === REGISTRATION_TYPES.SCHOOL
                     ? 'bg-green-600 text-white'
                     : 'bg-white text-green-700 hover:bg-green-100'
                 }`}
@@ -359,12 +367,12 @@ function Register() {
               <button
                 type="button"
                 onClick={() => {
-                  setRegistrationType('PROMOTOR');
+                  setRegistrationType(REGISTRATION_TYPES.PROMOTER);
                   setFormErrors({});
                   setFocusedField(null);
                 }}
                 className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
-                  registrationType === 'PROMOTOR'
+                  registrationType === REGISTRATION_TYPES.PROMOTER
                     ? 'bg-green-600 text-white'
                     : 'bg-white text-green-700 hover:bg-green-100'
                 }`}
@@ -377,7 +385,7 @@ function Register() {
             <p className="text-xs text-red-600 mt-2">{formErrors.registrationType}</p>
           )}
 
-          {registrationType === 'SCHOOL' && (
+          {registrationType === REGISTRATION_TYPES.SCHOOL && (
             <div className="w-full mb-4">
               <motion.input
                 whileFocus={{ scale: 1.02 }}
@@ -557,7 +565,7 @@ function Register() {
               </div>
             </div>
           )}
-          {registrationType === 'PROMOTOR' && (
+          {registrationType === REGISTRATION_TYPES.PROMOTER && (
             <div className="w-full mb-4">
               <motion.input
                 whileFocus={{ scale: 1.02 }}

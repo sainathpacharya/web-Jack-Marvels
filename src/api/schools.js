@@ -1,14 +1,4 @@
-import { apiClient } from '../services/apiClient';
-
-function normalizeRoleHeader(role) {
-  const value = String(role || '').trim().toLowerCase();
-  if (value === 'promoter' || value === 'promotor') return 'PROMOTOR';
-  if (value === 'school') return 'SCHOOL';
-  if (value === 'super_admin' || value === 'super-admin' || value === 'superadmin') {
-    return 'SUPER_ADMIN';
-  }
-  return 'ADMIN';
-}
+import { ApiError, apiClient } from '../services/apiClient';
 
 /** Map API school row to fields the dashboards already render. */
 export function normalizeSchoolFromApi(raw) {
@@ -64,6 +54,86 @@ function unwrapSchoolsListPayload(data) {
   return { items, total, page, limit, totalPages };
 }
 
+function toCreateSchoolError(error) {
+  if (!(error instanceof ApiError)) {
+    return new Error(error?.message || 'Failed to create school');
+  }
+
+  const status = Number(error?.payload?.status || 0);
+  const message = String(error?.message || '').trim();
+  if (status === 409) {
+    return new Error(message || 'School already exists. Email/branch code may already be in use.');
+  }
+  if (status === 403) {
+    return new Error(message || 'You are not authorized to create schools.');
+  }
+  if (status === 400) {
+    return new Error(message || 'Invalid school details. Please verify phone, pincode, and branch code.');
+  }
+  if (status === 500) {
+    const devHint =
+      import.meta.env.DEV && typeof window !== 'undefined' && window.location?.hostname === 'localhost'
+        ? ' Check the Spring Boot console (Vite proxies /api to localhost:8080).'
+        : '';
+    return new Error((message || 'Server error while creating school.') + devHint);
+  }
+  return new Error(message || 'Failed to create school');
+}
+
+/** Prefer Spring JSON body (`message`, `error`) over generic HTTP fallback labels. */
+function pickDetailedApiMessage(error) {
+  if (!(error instanceof ApiError)) return '';
+  const p = error.payload;
+  if (!p || typeof p !== 'object') return '';
+  const raw = p.raw;
+  if (raw && typeof raw === 'object') {
+    const fromMessage = typeof raw.message === 'string' ? raw.message.trim() : '';
+    if (fromMessage) return fromMessage;
+    const fromError = typeof raw.error === 'string' ? raw.error.trim() : '';
+    if (fromError && !/^internal server error$/i.test(fromError)) return fromError;
+  }
+  const details = p.details;
+  if (details && typeof details === 'object') {
+    const dm = typeof details.message === 'string' ? details.message.trim() : '';
+    if (dm) return dm;
+    const de = typeof details.error === 'string' ? details.error.trim() : '';
+    if (de && !/^internal server error$/i.test(de)) return de;
+  }
+  const top = typeof p.message === 'string' ? p.message.trim() : '';
+  if (top && !/^server error$/i.test(top) && !/^something went wrong$/i.test(top)) return top;
+  return '';
+}
+
+function toDeleteSchoolError(error) {
+  if (!(error instanceof ApiError)) {
+    return new Error(error?.message || 'Failed to delete school');
+  }
+  const status = Number(error?.payload?.status || 0);
+  const message = String(error?.message || '').trim();
+  const detailed = pickDetailedApiMessage(error);
+  if (status === 403) {
+    return new Error(detailed || message || 'You are not authorized to delete schools.');
+  }
+  if (status === 404) {
+    return new Error(detailed || message || 'School not found.');
+  }
+  if (status === 408 || status === 0) {
+    const devHint =
+      import.meta.env.DEV && typeof window !== 'undefined' && window.location?.hostname === 'localhost'
+        ? ' Start the API or set VITE_DEV_API_PROXY_TARGET.'
+        : '';
+    return new Error((detailed || message || 'Cannot reach server.') + devHint);
+  }
+  if (status === 500) {
+    const devHint =
+      import.meta.env.DEV && typeof window !== 'undefined' && window.location?.hostname === 'localhost'
+        ? ' Check the Spring Boot console (Vite proxies /api to your backend).'
+        : '';
+    return new Error((detailed || message || 'Server error while deleting school.') + devHint);
+  }
+  return new Error(detailed || message || 'Failed to delete school');
+}
+
 /**
  * GET /api/schools?page=&limit=
  * Response shape: { data: { total, limit, totalPages, page, items }, message }
@@ -94,20 +164,29 @@ export async function listSchools({ page = 1, limit = 10, signal } = {}) {
   };
 }
 
-export async function createSchool(payload, { userId, userRole, signal } = {}) {
-  // Spring registers POST /api/schools (same handler as /api/addSchools when backend is current).
-  const data = await apiClient.post(
-    '/api/schools',
-    payload,
-    {
-      headers: {
-        Accept: 'application/json',
-        'X-User-Id': String(userId ?? 1),
-        'X-User-Role': normalizeRoleHeader(userRole),
-      },
-      signal,
+export async function createSchool(payload, { userId: _userId, userRole: _userRole, signal } = {}) {
+  // Custom X-User-* headers omitted: api.alphavlogs.com CORS does not list them; Spring uses JWT for identity/roles.
+  const requestConfig = {
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
+  };
+
+  let data;
+  try {
+    // Preferred route in the latest backend.
+    data = await apiClient.post('/api/schools', payload, requestConfig);
+  } catch (error) {
+    // Backward compatibility: some deployments still expose create-school at /api/addSchools.
+    const status = error instanceof ApiError ? error.payload?.status : undefined;
+    if (status && status !== 404 && status !== 405) throw toCreateSchoolError(error);
+    try {
+      data = await apiClient.post('/api/addSchools', payload, requestConfig);
+    } catch (fallbackError) {
+      throw toCreateSchoolError(fallbackError);
     }
-  );
+  }
 
   if (typeof data?.statusCode === 'number' && data.statusCode !== 200 && data.statusCode !== 201) {
     throw new Error(data?.response || data?.message || 'Failed to create school');
@@ -121,20 +200,27 @@ export async function createSchool(payload, { userId, userRole, signal } = {}) {
 }
 
 /**
- * DELETE /api/deleteSchool/{schoolId}
- * Authorization: header-based role mapping using `X-User-Role` only.
+ * DELETE /api/deleteSchool/{schoolId} — canonical backend route (numeric id in path).
+ * Spring: @PreAuthorize("hasRole('ADMIN')"). Success example: { "message": "School deleted successfully" }.
+ * Falls back to DELETE /api/schools/{schoolId} on 404/405 only. Some deployments return 204 No Content.
  */
-export async function deleteSchool(schoolId, { userRole, signal } = {}) {
+export async function deleteSchool(schoolId, { userRole: _userRole, signal } = {}) {
   const id = String(schoolId ?? '').trim();
   if (!id) throw new Error('schoolId is required');
 
-  // Some backends return 204 No Content.
-  const data = await apiClient.delete(`/api/deleteSchool/${encodeURIComponent(id)}`, {
-    headers: {
-      Accept: 'application/json',
-      'X-User-Role': normalizeRoleHeader(userRole),
-    },
-    signal,
-  });
-  return data;
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  try {
+    return await apiClient.delete(`/api/deleteSchool/${encodeURIComponent(id)}`, { headers, signal });
+  } catch (error) {
+    const status = error instanceof ApiError ? error.payload?.status : undefined;
+    if (status && status !== 404 && status !== 405) throw toDeleteSchoolError(error);
+    try {
+      return await apiClient.delete(`/api/schools/${encodeURIComponent(id)}`, { headers, signal });
+    } catch (fallbackError) {
+      throw toDeleteSchoolError(fallbackError);
+    }
+  }
 }

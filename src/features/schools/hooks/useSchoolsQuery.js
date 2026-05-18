@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { setSchoolActive } from '../../../api/masters';
 import { createSchool, deleteSchool, listSchools, normalizeSchoolFromApi } from '../../../api/schools';
 import { STATIC_SCHOOLS_ADDED } from '../../../data/staticData';
 import { queryKeys } from '../../../lib/queryKeys';
@@ -102,6 +103,36 @@ export function useCreateSchoolMutation() {
             pages: [{ ...firstPage, items: [optimisticSchool, ...(firstPage.items || [])] }, ...value.pages.slice(1)],
           });
         }
+      });
+
+      return { previousSchools };
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousSchools?.forEach(([key, value]) => queryClient.setQueryData(key, value));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.schools.all, refetchType: 'active' });
+    },
+  });
+}
+
+export function useUpdateSchoolStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ schoolId, active }) => setSchoolActive(schoolId, active),
+    onMutate: async ({ schoolId, active }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.schools.all });
+      const nextStatus = active ? 'active' : 'inactive';
+      const previousSchools = queryClient.getQueriesData({ queryKey: queryKeys.schools.all });
+
+      previousSchools.forEach(([key, value]) => {
+        if (!value?.items) return;
+        queryClient.setQueryData(key, {
+          ...value,
+          items: value.items.map((school) =>
+            String(school.id) === String(schoolId) ? { ...school, status: nextStatus } : school
+          ),
+        });
       });
 
       return { previousSchools };

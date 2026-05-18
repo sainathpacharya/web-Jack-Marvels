@@ -79,12 +79,9 @@ export function clearMustChangePasswordInSession() {
 export async function logoutFromServer() {
   const user = getCurrentUser() || {};
   const me = getMe() || {};
-  const userId = String(user.id ?? user.userId ?? user.user_id ?? me.id ?? me.userId ?? me.user_id ?? '').trim();
   const mobileNumber = String(user.mobileNumber ?? user.mobile ?? user.phone ?? me.mobileNumber ?? me.mobile ?? me.phone ?? '').trim();
 
   const headers = {
-    'X-User-Role': 'SCHOOL',
-    ...(userId ? { 'X-User-Id': userId } : {}),
     Accept: 'application/json',
   };
 

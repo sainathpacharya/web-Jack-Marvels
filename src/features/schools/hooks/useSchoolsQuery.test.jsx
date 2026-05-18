@@ -54,7 +54,7 @@ describe('useSchoolsQuery hooks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.items).toHaveLength(1);
-    expect(listSchools).toHaveBeenCalledWith({ page: 1, limit: 10 });
+    expect(listSchools).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 10 }));
   });
 
   test('falls back to static data when api fails and fallback enabled', async () => {

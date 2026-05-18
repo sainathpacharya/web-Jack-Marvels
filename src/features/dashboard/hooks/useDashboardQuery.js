@@ -50,7 +50,8 @@ function buildFallbackDetails(isAdmin) {
 }
 
 async function fetchDashboard({ roleId, signal }) {
-  const isAdmin = Number(roleId) === ROLE_IDS.ADMIN;
+  const normalizedRoleId = Number(roleId);
+  const isAdmin = normalizedRoleId === ROLE_IDS.ADMIN || normalizedRoleId === ROLE_IDS.SUPER_ADMIN;
   const fallbackDetails = buildFallbackDetails(isAdmin);
   try {
     const apiDetails = await getDashBoardDetails({ signal });

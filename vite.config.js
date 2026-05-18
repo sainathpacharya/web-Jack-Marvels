@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ command }) => {
   // Keep dev always rooted at "/" so localhost launch works even if BASE_PATH is exported in shell.
   const base = command === 'serve' ? '/' : (process.env.BASE_PATH || '/');
+  const apiProxyTarget = process.env.VITE_DEV_API_PROXY_TARGET || 'http://localhost:8080';
 
   return {
     base,
@@ -24,11 +25,24 @@ export default defineConfig(({ command }) => {
     },
     server: {
       port: 5173,
-      // When VITE_API_BASE_URL is unset, relative `/api/*` requests hit Vite; forward them to Spring Boot.
+      // Used when dev uses same-origin `/api/*` (`VITE_DEV_USE_VITE_PROXY=true` in apiClient); forwards to Spring Boot.
       proxy: {
         '/api': {
-          target: 'http://localhost:8080',
+          target: apiProxyTarget,
           changeOrigin: true,
+          configure(proxy) {
+            let lastEconnrefusedHintAt = 0;
+            proxy.on('error', (err) => {
+              if (!String(err?.code || err?.message || '').includes('ECONNREFUSED')) return;
+              const now = Date.now();
+              if (now - lastEconnrefusedHintAt < 60_000) return;
+              lastEconnrefusedHintAt = now;
+              console.warn(
+                `\n[Vite /api proxy] Connection refused to ${apiProxyTarget} (repeats while the API is down). ` +
+                  'Start Spring Boot on that host/port, or set VITE_DEV_API_PROXY_TARGET in .env.\n'
+              );
+            });
+          },
         },
       },
     },

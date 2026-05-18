@@ -82,6 +82,9 @@ chmod 400 "$KEY_PATH"
 
 if [[ "$SKIP_BUILD" != "true" ]]; then
   echo "Building frontend..."
+  # Baked into the bundle at build time (override with env when running this script).
+  export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://api.alphavlogs.com}"
+  echo "Using VITE_API_BASE_URL=$VITE_API_BASE_URL"
   npm ci
   npm run build
 fi

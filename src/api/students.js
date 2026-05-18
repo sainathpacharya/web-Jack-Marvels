@@ -1,5 +1,5 @@
-import { getCurrentUser, getMe } from '../auth/session';
-import { apiClient } from '../services/apiClient';
+import { ApiError, apiClient } from '../services/apiClient';
+import { setStudentActive } from './masters';
 
 let cachedXlsxModule = null;
 
@@ -19,26 +19,6 @@ export function prefetchXlsx() {
 function unwrap(data) {
   if (!data || typeof data !== 'object') return data;
   return data.data ?? data.response ?? data;
-}
-
-function getSchoolHeaders() {
-  const user = getCurrentUser() || {};
-  const me = getMe() || {};
-  const userId = String(
-    user.id ??
-      user.userId ??
-      user.user_id ??
-      me.id ??
-      me.userId ??
-      me.user_id ??
-      user.schoolId ??
-      user.school_id ??
-      ''
-  ).trim();
-  return {
-    'X-User-Id': userId || '0',
-    'X-User-Role': 'SCHOOL',
-  };
 }
 
 const NEW_HEADERS = ['rollNumber', 'firstName', 'lastName', 'mobileNumber', 'emailId', 'class', 'section'];
@@ -217,11 +197,9 @@ export async function bulkUploadStudents(file, onProgress) {
   const formData = new FormData();
   formData.append('file', transformedFile);
 
-  const schoolHeaders = getSchoolHeaders();
   const result = await apiClient.multipart('/api/v1/students/bulk-upload', formData, {
     headers: {
       Accept: 'application/json',
-      ...schoolHeaders,
     },
     onUploadProgress: onProgress,
   });
@@ -259,27 +237,33 @@ export async function getStudents({
   if (sortDir) params.set('sortDir', sortDir);
 
   const data = await apiClient.get(`/api/v1/students/school/list?${params.toString()}`, undefined, {
-    headers: { Accept: 'application/json', ...getSchoolHeaders() },
+    headers: { Accept: 'application/json' },
     signal,
   });
   return normalizeStudentsListPayload(data);
 }
 
 export async function updateStudentStatus(studentId, active, { signal } = {}) {
-  const data = await apiClient.put(
-    `/api/students/${studentId}/status`,
-    { active: Boolean(active) },
-    {
-      headers: { Accept: 'application/json', ...getSchoolHeaders() },
-      signal,
-    }
-  );
-  return unwrap(data);
+  try {
+    return await setStudentActive(studentId, active, { signal });
+  } catch (error) {
+    const status = error instanceof ApiError ? error.payload?.status : undefined;
+    if (status && status !== 404 && status !== 405) throw error;
+    const data = await apiClient.put(
+      `/api/students/${encodeURIComponent(studentId)}/status`,
+      { active: Boolean(active) },
+      {
+        headers: { Accept: 'application/json' },
+        signal,
+      }
+    );
+    return unwrap(data);
+  }
 }
 
 export async function getStudentsSummary({ signal } = {}) {
   const data = await apiClient.get('/api/students/summary', undefined, {
-    headers: { Accept: 'application/json', ...getSchoolHeaders() },
+    headers: { Accept: 'application/json' },
     signal,
   });
   const root = unwrap(data) || {};

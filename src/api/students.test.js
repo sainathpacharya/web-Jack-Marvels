@@ -6,13 +6,7 @@ jest.mock('../services/apiClient', () => ({
   },
 }));
 
-jest.mock('../auth/session', () => ({
-  getCurrentUser: jest.fn(),
-  getMe: jest.fn(),
-}));
-
 import { apiClient } from '../services/apiClient';
-import { getCurrentUser, getMe } from '../auth/session';
 
 describe('students api', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -52,9 +46,6 @@ describe('students api', () => {
   });
 
   test('getStudents builds query params including status mapping and page offset', async () => {
-    getCurrentUser.mockReturnValue({ id: 12 });
-    getMe.mockReturnValue({});
-
     apiClient.get.mockResolvedValue({ items: [], totalElements: 0, page: 0, size: 20, totalPages: 1 });
 
     await getStudents({ page: 0, size: 20, status: 'active', className: '', section: '' });
@@ -65,7 +56,7 @@ describe('students api', () => {
     expect(url).toContain('page=1');
     expect(url).toContain('limit=20');
     expect(url).toContain('status=true');
-    expect(config.headers).toEqual(expect.objectContaining({ 'X-User-Role': 'SCHOOL', 'X-User-Id': '12', Accept: 'application/json' }));
+    expect(config.headers).toEqual(expect.objectContaining({ Accept: 'application/json' }));
   });
 });
 

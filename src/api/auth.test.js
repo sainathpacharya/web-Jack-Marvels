@@ -28,7 +28,7 @@ describe('auth api', () => {
 
     const res = await login({ username: '  user  ', password: 'pass' });
     expect(apiClient.post).toHaveBeenCalledWith(
-      '/api/authenticateUser',
+      '/api/auth/login',
       { username: '  user  ', password: 'pass', mobilenumber: '' },
       { auth: false },
     );
@@ -49,7 +49,7 @@ describe('auth api', () => {
   });
 
   test('logoutFromServer tries /api/v1/logout then falls back to /api/logout, and always clears session', async () => {
-    getCurrentUser.mockReturnValue({ id: 7, mobileNumber: '9999999999' });
+    getCurrentUser.mockReturnValue({ id: 7, mobileNumber: '9999999999', roleName: 'ADMIN' });
     getMe.mockReturnValue({});
 
     apiClient.post.mockImplementationOnce(() => Promise.reject(new Error('fail'))).mockResolvedValueOnce({});
@@ -63,8 +63,6 @@ describe('auth api', () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'application/json',
-          'X-User-Role': 'SCHOOL',
-          'X-User-Id': '7',
         }),
       }),
     );
@@ -76,8 +74,6 @@ describe('auth api', () => {
       expect.objectContaining({
         headers: expect.objectContaining({
           Accept: 'application/json',
-          'X-User-Role': 'SCHOOL',
-          'X-User-Id': '7',
         }),
       }),
     );

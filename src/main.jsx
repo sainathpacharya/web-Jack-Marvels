@@ -6,6 +6,7 @@ import App from './App.jsx';
 import './index.css';
 import store from './store';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import GlobalApiLoader from './components/GlobalApiLoader';
 import { NotificationProvider } from './components/notifications/NotificationProvider';
 import { QUERY_GC } from './lib/queryConfig';
 import { createMutationLogger } from './hooks/useMutationLogger';
@@ -47,6 +48,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
+          <GlobalApiLoader />
           <App />
         </NotificationProvider>
         {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}

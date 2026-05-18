@@ -47,7 +47,7 @@ describe('useStudentsQuery hooks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.items).toHaveLength(1);
-    expect(getStudents).toHaveBeenCalledWith(params);
+    expect(getStudents).toHaveBeenCalledWith(expect.objectContaining(params));
   });
 
   test('exposes error state when students fetch fails', async () => {

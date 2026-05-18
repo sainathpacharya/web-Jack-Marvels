@@ -5,13 +5,14 @@ import { useAppSelector } from '../store/hooks';
 import { selectRoleId } from '../store/selectors/authSelectors';
 
 export default function RoleGuard({ allow = [], children }) {
-  const roleId = useAppSelector(selectRoleId);
+  const roleId = Number(useAppSelector(selectRoleId));
+  const allowedRoleIds = allow.map((value) => Number(value));
 
-  if (Number(roleId) === ROLE_IDS.STUDENT) {
+  if (roleId === ROLE_IDS.STUDENT) {
     return <Navigate to="/web-access-blocked" replace />;
   }
 
-  if (!allow.includes(roleId)) {
+  if (!allowedRoleIds.includes(roleId)) {
     return <Navigate to="/forbidden" replace />;
   }
 
