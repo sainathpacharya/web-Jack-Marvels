@@ -39,8 +39,8 @@ const PasswordField = forwardRef(function PasswordField(
           id={id}
           {...rest}
           type={visible ? 'text' : 'password'}
-          className={`w-full rounded-lg border p-3 pr-11 text-sm ${
-            error ? 'border-red-400' : 'border-gray-300'
+          className={`w-full rounded-lg border bg-white/80 p-3 pr-11 font-body text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 ${
+            error ? 'border-red-400 focus:border-red-400' : 'border-orange-200/70 focus:border-brand-orange'
           }`}
         />
         <button

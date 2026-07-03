@@ -17,7 +17,7 @@ export default function SchoolDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-sky-900">Dashboard</h1>
+      <h1 className="theme-page-title !text-3xl !mb-2">Dashboard</h1>
       <p className="mt-1 text-sm text-gray-600">Overview of your school student metrics.</p>
 
       <div className="mt-5">

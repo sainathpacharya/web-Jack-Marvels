@@ -14,26 +14,18 @@ export default function PrivacyPolicy() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Privacy Policy
-            </h1>
-            <Link
-              to="/"
-              className="text-sm font-medium text-green-600 hover:text-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 rounded"
-            >
-              ← Back to Home
-            </Link>
-          </div>
+    <div>
+      <header className="theme-site-header sticky top-0 z-10">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
+          <h1 className="font-script text-2xl font-bold text-purple-800 sm:text-3xl">Privacy Policy</h1>
+          <Link to="/" className="font-label text-sm font-medium text-brand-orange hover:underline">
+            ← Back to Home
+          </Link>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <article className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-10">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+        <article className="theme-card-lg">
           <p className="text-sm text-gray-500 mb-8">
             Last updated: {LAST_UPDATED}
           </p>
@@ -162,7 +154,7 @@ export default function PrivacyPolicy() {
               For privacy-related questions or requests, contact us at:{' '}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="text-green-600 hover:text-green-700 font-medium underline focus:outline-none focus:ring-2 focus:ring-green-500 rounded"
+                className="rounded font-label font-medium text-brand-orange underline hover:text-orange-600"
               >
                 {CONTACT_EMAIL}
               </a>

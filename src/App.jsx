@@ -12,6 +12,7 @@ import { useAppDispatch } from './store/hooks';
 import { clearAuthState } from './store/slices/authSlice';
 import AppErrorBoundary from './components/errors/AppErrorBoundary';
 import PageSkeleton from './components/loaders/PageSkeleton';
+import AppLayout from './components/layout/AppLayout';
 
 const Home = lazy(() => import('./pages/Home'));
 const Events = lazy(() => import('./pages/Events'));
@@ -25,6 +26,7 @@ const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const PromoterDashboard = lazy(() => import('./pages/PromoterDashboard'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const DeleteAccount = lazy(() => import('./pages/DeleteAccount'));
 const ProfileScreen = lazy(() => import('./pages/ProfileScreen'));
 const SchoolDashboardLayout = lazy(() => import('./components/school/SchoolDashboardLayout'));
 const SchoolDashboardPage = lazy(() => import('./pages/school/SchoolDashboardPage'));
@@ -51,7 +53,7 @@ function App() {
   return (
     <Router basename={basename}>
       <AppErrorBoundary>
-        <div className="bg-green-100 shadow min-h-screen">
+        <AppLayout>
           <Suspense fallback={<PageSkeleton rows={8} />}>
             <MustResolvePassword>
             <Routes>
@@ -114,12 +116,13 @@ function App() {
           <Route path="/results" element={<Results />} />
           <Route path="/QuizCreator" element={<QuizCreator />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
           <Route path="/forbidden" element={<Forbidden />} />
           <Route path="/web-access-blocked" element={<WebAccessBlocked />} />
             </Routes>
             </MustResolvePassword>
           </Suspense>
-        </div>
+        </AppLayout>
       </AppErrorBoundary>
     </Router>
   );

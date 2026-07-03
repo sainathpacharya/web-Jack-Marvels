@@ -4,49 +4,49 @@ function SubscriptionPlansModal({ open, onCloseAndPay }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl p-8 relative">
+      <div className="theme-card-lg relative w-full max-w-5xl">
         <button
-          className="absolute top-4 right-4 text-gray-500 hover:text-black text-xl"
+          className="absolute right-4 top-4 text-xl text-gray-500 hover:text-black"
           onClick={onCloseAndPay}
         >
           ✕
         </button>
-        <h2 className="text-3xl md:text-4xl font-extrabold text-center text-indigo-700 mb-6">Choose the Right Plan for You</h2>
-        <p className="text-center text-gray-600 mb-10 max-w-2xl mx-auto">
+        <h2 className="theme-page-title text-center">Choose the Right Plan for You</h2>
+        <p className="mx-auto mb-10 max-w-2xl text-center font-body text-gray-600">
           Unlock exclusive benefits and participate in more events by selecting a subscription plan that fits your needs.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="border-2 border-yellow-300 rounded-2xl p-6 bg-yellow-50 hover:shadow-xl transition">
-            <h3 className="text-xl font-bold text-yellow-600 mb-2">Basic Plan</h3>
-            <p className="text-3xl font-extrabold text-yellow-700 mb-2">₹99 <span className="text-base font-medium">/month</span></p>
-            <ul className="text-gray-700 text-sm space-y-2 mb-4">
+            <h3 className="mb-2 font-script text-2xl text-yellow-600">Basic Plan</h3>
+            <p className="mb-2 font-display text-3xl font-bold text-yellow-700">₹99 <span className="text-base font-medium">/month</span></p>
+            <ul className="mb-4 space-y-2 font-body text-sm text-gray-700">
               <li>Access to 5 events</li>
               <li>Standard support</li>
               <li>Email notifications</li>
             </ul>
-            <button className="w-full bg-yellow-500 text-white py-2 rounded-xl hover:bg-yellow-600 transition" onClick={onCloseAndPay}>Choose Basic</button>
+            <button className="w-full rounded-xl bg-yellow-500 py-2 font-script text-lg font-bold text-white transition hover:bg-yellow-600" onClick={onCloseAndPay}>Choose Basic</button>
           </div>
-          <div className="border-4 border-green-500 rounded-2xl p-6 bg-white shadow-lg transform scale-105">
-            <h3 className="text-xl font-bold text-green-600 mb-2">Premium Plan</h3>
-            <p className="text-3xl font-extrabold text-green-700 mb-2">₹199 <span className="text-base font-medium">/month</span></p>
-            <ul className="text-gray-700 text-sm space-y-2 mb-4">
+          <div className="scale-105 transform rounded-2xl border-4 border-brand-orange bg-white p-6 shadow-lg">
+            <h3 className="mb-2 font-script text-2xl text-brand-orange">Premium Plan</h3>
+            <p className="mb-2 font-display text-3xl font-bold text-brand-orange">₹199 <span className="text-base font-medium">/month</span></p>
+            <ul className="mb-4 space-y-2 font-body text-sm text-gray-700">
               <li>Unlimited event access</li>
               <li>Priority support</li>
               <li>Participation certificates</li>
               <li>Early event registration</li>
             </ul>
-            <button className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition" onClick={onCloseAndPay}>Choose Premium</button>
+            <button className="theme-btn-primary w-full py-2" onClick={onCloseAndPay}>Choose Premium</button>
           </div>
-          <div className="border-2 border-indigo-300 rounded-2xl p-6 bg-indigo-50 hover:shadow-xl transition">
-            <h3 className="text-xl font-bold text-indigo-600 mb-2">Annual Plan</h3>
-            <p className="text-3xl font-extrabold text-indigo-700 mb-2">₹999 <span className="text-base font-medium">/year</span></p>
-            <ul className="text-gray-700 text-sm space-y-2 mb-4">
+          <div className="rounded-2xl border-2 border-purple-200 bg-white/70 p-6 transition hover:shadow-xl">
+            <h3 className="mb-2 font-script text-2xl text-purple-700">Annual Plan</h3>
+            <p className="mb-2 font-display text-3xl font-bold text-purple-800">₹999 <span className="text-base font-medium">/year</span></p>
+            <ul className="mb-4 space-y-2 font-body text-sm text-gray-700">
               <li>All Premium benefits</li>
               <li>Free merchandise kit</li>
               <li>1:1 mentor session (yearly)</li>
               <li>Priority email + phone support</li>
             </ul>
-            <button className="w-full bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 transition" onClick={onCloseAndPay}>Choose Annual</button>
+            <button className="theme-btn-accent w-full py-2" onClick={onCloseAndPay}>Choose Annual</button>
           </div>
         </div>
       </div>

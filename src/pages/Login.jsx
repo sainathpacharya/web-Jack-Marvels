@@ -77,23 +77,17 @@ function Login() {
 
   return (
     <div
-      className="flex justify-center items-center h-screen bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: `url(${bgImage})`,
-      }}
+      className="flex h-screen items-center justify-center bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${bgImage})` }}
     >
-      <div className="bg-white bg-opacity-90 p-10 rounded-3xl shadow-xl w-full max-w-md">
-        <h2 className="text-3xl font-bold mb-6 text-green-700 text-center">
-          Please Sign In to Continue
-        </h2>
+      <div className="theme-card-lg w-full max-w-md">
+        <h2 className="theme-section-title mb-6 text-center">Please Sign In to Continue</h2>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>
             <input
               {...register('username')}
               autoComplete="username"
-              className={`w-full p-4 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700 ${
-                errors.username ? 'border-red-600' : 'border-green-300'
-              }`}
+              className={`theme-input text-lg ${errors.username ? 'theme-input-error' : ''}`}
               placeholder="Email or username"
               aria-invalid={errors.username ? 'true' : 'false'}
             />
@@ -105,7 +99,7 @@ function Login() {
             <PasswordField
               {...register('password')}
               error={errors.password?.message}
-              className="[&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-green-300 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-green-200"
+              className="[&_input]:theme-input [&_input]:text-lg"
               placeholder="Password"
               autoComplete="current-password"
               aria-invalid={errors.password ? 'true' : 'false'}
@@ -114,20 +108,20 @@ function Login() {
           <button
             type="submit"
             disabled={loading || !isValid}
-            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="theme-btn-primary w-full py-3 text-lg disabled:cursor-not-allowed"
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
           {authError ? <p className="text-sm text-red-600">{authError}</p> : null}
         </form>
-        <p className="mt-6 text-sm text-center">
+        <p className="mt-6 text-center text-sm">
           Create an account?{' '}
           <span
             role="button"
             tabIndex={0}
             onClick={() => navigate('/Register')}
             onKeyDown={(e) => e.key === 'Enter' && navigate('/Register')}
-            className="text-green-700 underline font-semibold cursor-pointer"
+            className="cursor-pointer font-semibold text-brand-orange underline"
           >
             Register
           </span>

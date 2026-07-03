@@ -21,6 +21,8 @@ import {
 } from '../store/slices/superAdminSlice';
 import { selectPromoCodes, selectSponsors, selectVideoBytes } from '../store/selectors/superAdminSelectors';
 import { validateSuperAdminPromoterForm } from '../lib/validation';
+import AdminPageTitle from '../components/admin/AdminPageTitle';
+import { getNavColor } from '../lib/adminTheme';
 
 const SIDEBAR_ITEMS = [
   { label: 'Dashboard', path: 'dashboard' },
@@ -211,30 +213,32 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 flex-col">
+    <div className="flex min-h-screen flex-col">
       <AppHeader onLogout={handleLogout} />
       <div className="flex flex-1">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
-        <div className="p-5 border-b border-gray-100">
-          <span className="text-2xl font-bold text-indigo-700">Aluer.</span>
+      <aside className="hidden w-56 flex-col border-r border-orange-100/60 bg-sidebar-peach md:flex">
+        <div className="border-b border-orange-100/80 p-5">
+          <span className="font-display text-2xl font-bold text-brand-orange">ALPHA VLOGS</span>
+          <p className="mt-1 font-label text-sm font-semibold text-green-800">Super Admin</p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 space-y-1 p-3">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
+              type="button"
               onClick={() => setActiveNav(item.path)}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
+              className={`w-full rounded-xl px-4 py-3 text-left font-script text-xl transition ${
                 activeNav === item.path
-                  ? 'bg-indigo-100 text-indigo-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-peach-highlight text-gray-800 shadow-sm'
+                  : `${getNavColor(item.path)} hover:bg-peach-highlight/50`
               }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100" />
+        <div className="border-t border-orange-100/80 p-3" />
       </aside>
 
       {sidebarOpen && (
@@ -245,38 +249,40 @@ export default function SuperAdminDashboard() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-orange-100/60 bg-sidebar-peach transform transition-transform duration-200 md:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-gray-100">
-          <span className="text-2xl font-bold text-indigo-700">Aluer.</span>
+        <div className="border-b border-orange-100/80 p-5">
+          <span className="font-display text-2xl font-bold text-brand-orange">ALPHA VLOGS</span>
+          <p className="mt-1 font-label text-sm font-semibold text-green-800">Super Admin</p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 space-y-1 p-3">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
+              type="button"
               onClick={() => {
                 setActiveNav(item.path);
                 setSidebarOpen(false);
               }}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
+              className={`w-full rounded-xl px-4 py-3 text-left font-script text-xl transition ${
                 activeNav === item.path
-                  ? 'bg-indigo-100 text-indigo-800'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-peach-highlight text-gray-800 shadow-sm'
+                  : `${getNavColor(item.path)} hover:bg-peach-highlight/50`
               }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100">
+        <div className="border-t border-orange-100/80 p-3">
           {/* Logout is handled from the top header for consistent UX */}
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
+      <main className="admin-main">
         <div className="md:hidden flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
           <button
             type="button"
@@ -299,25 +305,11 @@ export default function SuperAdminDashboard() {
               <path d="M4 18h16" />
             </svg>
           </button>
-          <div className="text-lg font-bold text-gray-800">
-            {activeNav === 'dashboard' && 'SUPER ADMIN'}
-            {activeNav === 'schools' && 'SCHOOLS'}
-            {activeNav === 'promoters' && 'PROMOTERS'}
-            {activeNav === 'sponsors' && 'SPONSORS'}
-            {activeNav === 'video-bytes' && 'VIDEO BYTES'}
-            {activeNav === 'promo-codes' && 'PROMO CODES'}
-          </div>
+          <AdminPageTitle activeNav={activeNav} className="!text-3xl" />
           <div />
         </div>
 
-        <h1 className="hidden md:block text-2xl font-bold text-gray-800 mb-6">
-          {activeNav === 'dashboard' && 'SUPER ADMIN DASHBOARD'}
-          {activeNav === 'schools' && 'Schools'}
-          {activeNav === 'promoters' && 'Promoters'}
-          {activeNav === 'sponsors' && 'Sponsors'}
-          {activeNav === 'video-bytes' && 'Video Bytes'}
-          {activeNav === 'promo-codes' && 'Promo Codes'}
-        </h1>
+        <AdminPageTitle activeNav={activeNav} className="mb-6 hidden md:block" />
 
         {activeNav === 'dashboard' && (
           <>
@@ -567,10 +559,10 @@ export default function SuperAdminDashboard() {
               value={newSchoolName}
               onChange={(e) => setNewSchoolName(e.target.value)}
               placeholder="School name"
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+              className="theme-input mb-4"
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowAddSchool(false)} className="flex-1 py-2 border border-gray-300 rounded-lg">Cancel</button>
+              <button onClick={() => setShowAddSchool(false)} className="theme-btn-secondary flex-1 py-2">Cancel</button>
               <button onClick={handleAddSchool} className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Add</button>
             </div>
           </div>
@@ -626,7 +618,7 @@ export default function SuperAdminDashboard() {
                   type="file"
                   accept="image/*"
                   onChange={handlePromoterPhotoChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700"
+                  className="w-full rounded-lg border border-orange-200/70 bg-white/80 p-2 text-sm text-gray-500 file:mr-2 file:rounded file:border-0 file:bg-peach-highlight file:px-3 file:py-1 file:font-label file:text-brand-orange"
                 />
                 {promoterForm.photo && (
                   <img src={promoterForm.photo} alt="Preview" className="mt-2 h-16 w-16 object-cover rounded border" />
@@ -687,13 +679,13 @@ export default function SuperAdminDashboard() {
                   value={promoterForm.city}
                   onChange={(e) => handlePromoterFormChange('city', e.target.value)}
                   placeholder="City"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="theme-input"
                 />
                 <input
                   value={promoterForm.state}
                   onChange={(e) => handlePromoterFormChange('state', e.target.value)}
                   placeholder="State"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="theme-input"
                 />
               </div>
               <input
@@ -714,7 +706,7 @@ export default function SuperAdminDashboard() {
                 onChange={(e) => handlePromoterFormChange('notes', e.target.value)}
                 placeholder="Additional details / notes (optional)"
                 rows={2}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                className="theme-input resize-none"
               />
               <div className="pt-2 border-t border-gray-200 mt-2">
                 <p className="text-sm font-medium text-gray-700 mb-2">Promo code for this promoter</p>
@@ -750,7 +742,7 @@ export default function SuperAdminDashboard() {
             <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
               <button
                 onClick={() => { setShowAddPromoter(false); resetPromoterForm(); }}
-                className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="theme-btn-secondary flex-1 py-2"
               >
                 Cancel
               </button>
@@ -769,10 +761,10 @@ export default function SuperAdminDashboard() {
               value={newSponsorName}
               onChange={(e) => setNewSponsorName(e.target.value)}
               placeholder="Sponsor name"
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+              className="theme-input mb-4"
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowAddSponsor(false)} className="flex-1 py-2 border border-gray-300 rounded-lg">Cancel</button>
+              <button onClick={() => setShowAddSponsor(false)} className="theme-btn-secondary flex-1 py-2">Cancel</button>
               <button onClick={handleAddSponsor} className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Add</button>
             </div>
           </div>
@@ -786,10 +778,10 @@ export default function SuperAdminDashboard() {
               value={newVideoByteTitle}
               onChange={(e) => setNewVideoByteTitle(e.target.value)}
               placeholder="Video title"
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+              className="theme-input mb-4"
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowAddVideoByte(false)} className="flex-1 py-2 border border-gray-300 rounded-lg">Cancel</button>
+              <button onClick={() => setShowAddVideoByte(false)} className="theme-btn-secondary flex-1 py-2">Cancel</button>
               <button onClick={handleAddVideoByte} className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Add</button>
             </div>
           </div>

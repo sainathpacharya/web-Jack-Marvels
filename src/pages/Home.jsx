@@ -11,6 +11,7 @@ import {
 } from '../features/dashboard/hooks/useDashboardQuery';
 import { useNotifications } from '../components/notifications/NotificationProvider';
 import SectionSkeleton from './home/SectionSkeleton';
+import SiteHeader from '../components/layout/SiteHeader';
 
 const QuickActionsSection = lazy(() => import('./home/QuickActionsSection'));
 const PerformersSection = lazy(() => import('./home/PerformersSection'));
@@ -248,8 +249,8 @@ const Home = () => {
 
   const dashboardHeading = useMemo(() => (
     <div className="px-6 md:px-20 pt-4">
-      <h2 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
-        <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-sm">◉</span>
+      <h2 className="theme-subtitle flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-peach-highlight text-sm text-brand-orange">◉</span>
         Dashboard
       </h2>
       {isAdmin ? (
@@ -263,42 +264,15 @@ const Home = () => {
 
   return (
     <div>
-      {/* Header */}
-      <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-            Alpha Vlogs
-          </h1>
-        </button>
-        <div className="flex items-center gap-3">
-          {!hideSubscribeButton && (
-            <button
-              onClick={() => setShowPlans(true)}
-              className="bg-yellow-500 text-white px-4 py-2 rounded-full hover:bg-yellow-600 transition text-sm"
-            >
-              Subscribe
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <SiteHeader
+        homePath="/home"
+        showSubscribe={!hideSubscribeButton}
+        showLogout
+        onSubscribe={() => setShowPlans(true)}
+        onLogout={handleLogout}
+      />
       {dashboardHeading}
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6 pt-16">
+      <div className="p-6 pt-8">
         <div ref={quickActionsRef}>
           <Suspense fallback={<SectionSkeleton rows={3} className="mb-12" />}>
             <QuickActionsSection actions={results} onActionClick={onActionClick} />

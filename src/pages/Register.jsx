@@ -138,6 +138,7 @@ import {
 } from '../lib/validation';
 import { extractFieldErrorsFromCaughtError } from '../lib/validation/apiFieldErrors';
 import { PASSWORD_REQUIREMENTS_SUMMARY } from '../lib/passwordPolicy';
+import SiteHeader from '../components/layout/SiteHeader';
 
 const REGISTRATION_TYPES = {
   SCHOOL: 'SCHOOL',
@@ -272,38 +273,20 @@ function Register() {
 
   return (
     <div>
-      <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <div className="text-xl font-bold text-green-800">Alpha Vlogs</div>
-        </button>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
-        >
-          Login
-        </button>
-      </header>
+      <SiteHeader
+        homePath="/"
+        showLogin
+        onLogin={() => navigate('/')}
+      />
 
-      <div className="flex justify-center items-start min-h-screen py-10 bg-gradient-to-tr from-green-100 to-green-300 overflow-y-auto">
+      <div className="flex min-h-screen items-start justify-center overflow-y-auto py-10">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
-          className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto"
+          className="theme-card-lg max-h-[85vh] w-full max-w-md overflow-y-auto"
         >
-          <h2 className="text-3xl font-bold mb-6 text-green-700 text-center">
-            Create a New Account
-          </h2>
+          <h2 className="theme-section-title mb-6 text-center">Create a New Account</h2>
           <motion.input
             whileFocus={{ scale: 1.02 }}
             value={email}
@@ -318,9 +301,9 @@ function Register() {
               formErrors.email
                 ? 'border-red-600'
                 : focusedField === 'email'
-                  ? 'border-green-700'
-                  : 'border-green-300'
-            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                ? 'border-brand-orange'
+                : 'border-orange-200/70'
+            } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
             placeholder="Email"
             required
           />
@@ -337,9 +320,9 @@ function Register() {
               formErrors.mobile
                 ? 'border-red-600'
                 : focusedField === 'mobile'
-                  ? 'border-green-700'
-                  : 'border-green-300'
-            } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                ? 'border-brand-orange'
+                : 'border-orange-200/70'
+            } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
             placeholder="Mobile Number"
             type="tel"
             required
@@ -348,7 +331,7 @@ function Register() {
             <p className="text-xs text-red-600 mt-1">{formErrors.mobile}</p>
           )}
           <div className="w-full mb-4">
-            <div className="flex gap-2 bg-green-50 p-1 rounded-lg border border-green-200">
+            <div className="flex gap-2 rounded-lg border border-orange-200/70 bg-white/50 p-1">
               <button
                 type="button"
                 onClick={() => {
@@ -358,8 +341,8 @@ function Register() {
                 }}
                 className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
                   registrationType === REGISTRATION_TYPES.SCHOOL
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-green-700 hover:bg-green-100'
+                    ? 'bg-brand-orange text-white'
+                    : 'bg-white text-brand-orange hover:bg-peach-highlight/50'
                 }`}
               >
                 Schools
@@ -373,8 +356,8 @@ function Register() {
                 }}
                 className={`flex-1 py-3 rounded-md text-sm font-semibold transition ${
                   registrationType === REGISTRATION_TYPES.PROMOTER
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-green-700 hover:bg-green-100'
+                    ? 'bg-brand-orange text-white'
+                    : 'bg-white text-brand-orange hover:bg-peach-highlight/50'
                 }`}
               >
                 Promoters
@@ -397,9 +380,9 @@ function Register() {
                   formErrors.schoolName
                     ? 'border-red-600'
                     : focusedField === 'schoolName'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Name of school"
                 required
               />
@@ -430,9 +413,9 @@ function Register() {
                       formErrors.schoolBranchCode
                         ? 'border-red-600'
                         : focusedField === 'schoolBranchCode'
-                          ? 'border-green-700'
-                          : 'border-green-300'
-                    } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                ? 'border-brand-orange'
+                : 'border-orange-200/70'
+                    } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                     placeholder="Branch code"
                     required
                   />
@@ -452,9 +435,9 @@ function Register() {
                   formErrors.schoolHouse
                     ? 'border-red-600'
                     : focusedField === 'schoolHouse'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="House"
                 required
               />
@@ -472,9 +455,9 @@ function Register() {
                   formErrors.schoolStreet
                     ? 'border-red-600'
                     : focusedField === 'schoolStreet'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Street"
                 required
               />
@@ -492,9 +475,9 @@ function Register() {
                   formErrors.schoolDistrict
                     ? 'border-red-600'
                     : focusedField === 'schoolDistrict'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="District"
                 required
               />
@@ -512,9 +495,9 @@ function Register() {
                   formErrors.schoolState
                     ? 'border-red-600'
                     : focusedField === 'schoolState'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="State"
                 required
               />
@@ -532,9 +515,9 @@ function Register() {
                   formErrors.schoolPincode
                     ? 'border-red-600'
                     : focusedField === 'schoolPincode'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Pincode"
                 inputMode="numeric"
                 required
@@ -577,9 +560,9 @@ function Register() {
                   formErrors.name
                     ? 'border-red-600'
                     : focusedField === 'name'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Name"
                 required
               />
@@ -597,9 +580,9 @@ function Register() {
                   formErrors.house
                     ? 'border-red-600'
                     : focusedField === 'house'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="House"
                 required
               />
@@ -616,9 +599,9 @@ function Register() {
                   formErrors.street
                     ? 'border-red-600'
                     : focusedField === 'street'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Street"
                 required
               />
@@ -635,9 +618,9 @@ function Register() {
                   formErrors.district
                     ? 'border-red-600'
                     : focusedField === 'district'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="District"
                 required
               />
@@ -654,9 +637,9 @@ function Register() {
                   formErrors.state
                     ? 'border-red-600'
                     : focusedField === 'state'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="State"
                 required
               />
@@ -673,9 +656,9 @@ function Register() {
                   formErrors.pincode
                     ? 'border-red-600'
                     : focusedField === 'pincode'
-                      ? 'border-green-700'
-                      : 'border-green-300'
-                } focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-700`}
+                      ? 'border-brand-orange'
+                      : 'border-orange-200/70'
+                } focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange`}
                 placeholder="Pincode"
                 inputMode="numeric"
                 required
@@ -710,7 +693,7 @@ function Register() {
                 value={influencerPromoCode}
                 onChange={(e) => setInfluencerPromoCode(e.target.value.replace(/[^a-zA-Z0-9]/g, ''))}
                 className={`w-full p-4 border rounded-lg mb-0 text-lg ${
-                  formErrors.promoCode ? 'border-red-600' : 'border-green-300'
+                  formErrors.promoCode ? 'border-red-600' : 'border-orange-200/70'
                 }`}
                 placeholder="Promo code (optional)"
               />
@@ -723,7 +706,7 @@ function Register() {
                 value={influencerInstagramProfileLink}
                 onChange={(e) => setInfluencerInstagramProfileLink(e.target.value)}
                 className={`w-full p-4 border rounded-lg mt-4 mb-2 text-lg ${
-                  formErrors.instagram ? 'border-red-600' : 'border-green-300'
+                  formErrors.instagram ? 'border-red-600' : 'border-orange-200/70'
                 }`}
                 placeholder="Instagram profile link (optional)"
               />
@@ -736,7 +719,7 @@ function Register() {
                 value={influencerYoutubeProfileLink}
                 onChange={(e) => setInfluencerYoutubeProfileLink(e.target.value)}
                 className={`w-full p-4 border rounded-lg mb-0 text-lg ${
-                  formErrors.youtube ? 'border-red-600' : 'border-green-300'
+                  formErrors.youtube ? 'border-red-600' : 'border-orange-200/70'
                 }`}
                 placeholder="YouTube profile link (optional)"
               />
@@ -756,7 +739,7 @@ function Register() {
               showStrength={Boolean(password)}
               showRequirementsHint
               requirementsHint={PASSWORD_REQUIREMENTS_SUMMARY}
-              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-green-300 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-green-200"
+              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-orange-200/70 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-brand-orange/20"
               placeholder="Password"
               autoComplete="new-password"
             />
@@ -768,7 +751,7 @@ function Register() {
               onFocus={() => setFocusedField('confirmPassword')}
               onBlur={() => setFocusedField(null)}
               error={formErrors.confirmPassword}
-              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-green-300 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-green-200"
+              className="[&_input]:w-full [&_input]:p-4 [&_input]:text-lg [&_input]:rounded-lg [&_input]:border-orange-200/70 focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-brand-orange/20"
               placeholder="Confirm Password"
               autoComplete="new-password"
             />
@@ -779,7 +762,7 @@ function Register() {
             whileHover={{ scale: 1.05 }}
             onClick={handleRegister}
             disabled={registerStatus === 'loading'}
-            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="theme-btn-primary w-full py-3 text-lg disabled:cursor-not-allowed"
           >
             {registerStatus === 'loading' ? 'Registering...' : 'Register'}
           </motion.button>
@@ -787,7 +770,7 @@ function Register() {
             Already have an account?{' '}
             <span
               onClick={() => navigate('/')}
-              className="text-green-700 underline font-semibold cursor-pointer"
+              className="cursor-pointer font-semibold text-brand-orange underline"
             >
               Sign In
             </span>

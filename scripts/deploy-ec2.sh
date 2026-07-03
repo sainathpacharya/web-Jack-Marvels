@@ -15,7 +15,7 @@ Usage:
 
 Examples:
   scripts/deploy-ec2.sh \
-    --host 54.198.71.21 \
+    --host 32.192.216.15 \
     --user ec2-user \
     --key ~/Downloads/jackmarvels-key.pem \
     --path /var/www/alpha-frontend

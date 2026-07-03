@@ -3,24 +3,21 @@ import React, { memo } from 'react';
 function PerformersSection({ performers = [] }) {
   if (!performers.length) return null;
   return (
-    <section className="relative py-12 px-4 md:px-10 bg-gradient-to-r from-indigo-100 to-purple-100 shadow-inner rounded-xl mb-12 overflow-hidden">
-      <h2 className="text-3xl font-extrabold text-center text-indigo-800 mb-10">This Week&apos;s Star Performers</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <section className="theme-banner relative mb-12 overflow-hidden px-4 py-12 md:px-10">
+      <h2 className="theme-section-title mb-10 text-center">This Week&apos;s Star Performers</h2>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {performers.map((winner, idx) => (
-          <article
-            key={`${winner.event}-${idx}`}
-            className="bg-white shadow-xl rounded-3xl overflow-hidden border border-indigo-100 hover:shadow-2xl transition duration-300"
-          >
+          <article key={`${winner.event}-${idx}`} className="theme-card overflow-hidden p-0 transition hover:shadow-lg">
             <img
               src={winner.image}
               alt={winner.event}
-              className="w-full h-48 object-cover"
+              className="h-48 w-full object-cover"
               loading="lazy"
               decoding="async"
             />
             <div className="p-4">
-              <h3 className="text-xl font-bold text-indigo-700">{winner.event}</h3>
-              <p className="text-gray-800 font-medium mt-1">🏆 {winner.winner}</p>
+              <h3 className="font-script text-2xl text-purple-800">{winner.event}</h3>
+              <p className="mt-1 font-label font-medium text-gray-800">🏆 {winner.winner}</p>
               <p className="text-sm text-gray-600">{winner.school}</p>
             </div>
           </article>

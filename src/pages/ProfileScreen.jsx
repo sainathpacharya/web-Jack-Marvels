@@ -79,9 +79,9 @@ export default function ProfileScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
-      <div className="mx-auto w-full max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-800">Profile</h1>
+    <div className="theme-page-narrow">
+      <div className="theme-card-lg">
+        <h1 className="theme-page-title !text-3xl">Profile</h1>
         <p className="mt-1 text-sm text-gray-600">View and update your personal details.</p>
 
         {profileLoading ? <p className="mt-4 text-sm text-gray-600">Loading profile...</p> : null}
@@ -116,7 +116,7 @@ export default function ProfileScreen() {
             <img src={profileImage} alt="Profile" className="h-20 w-20 rounded-full border border-gray-200 object-cover" />
           ) : null}
 
-          <div className="grid grid-cols-1 gap-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 rounded-lg bg-white/50 p-3 text-sm text-gray-700 sm:grid-cols-2">
             <p>
               <span className="font-semibold">Role:</span> {profile?.role || '-'}
             </p>
@@ -146,7 +146,7 @@ export default function ProfileScreen() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-full rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="theme-btn-secondary w-full"
           >
             Back
           </button>

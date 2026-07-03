@@ -207,7 +207,7 @@ export default function StudentUploadPage() {
       ) : null}
 
       {students.length === 0 && !studentsQuery.isLoading ? (
-        <p className="mt-4 rounded-lg bg-sky-50 p-4 text-sm text-sky-800">
+            className="mt-4 rounded-lg border border-orange-100/60 bg-white/50 p-4 text-sm text-gray-700"
           {filters.className || filters.section || filters.search || filters.status
             ? 'No students found'
             : 'No students uploaded yet'}

@@ -53,7 +53,7 @@ export default function PaginationControls({
             type="button"
             onClick={() => onPageChange(p)}
             className={`rounded-lg px-3 py-1 text-sm ${
-              p === page ? 'bg-sky-700 text-white' : 'border border-sky-200 text-sky-900'
+              p === page ? 'bg-brand-orange text-white' : 'border border-orange-200/70 text-gray-800'
             }`}
           >
             {p + 1}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logoutFromServer } from '../api/auth';
+import SiteHeader from '../components/layout/SiteHeader';
 
 const PROMOTER_SCHOOLS_KEY = 'promoterSchools';
 const PROMOTER_PROMO_CODES_KEY = 'promoterPromoCodes';
@@ -35,52 +36,24 @@ function Payment() {
   };
   return (
     <div>
-      <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-            Alpha Vlogs
-          </h1>
-        </button>
-        <div className="flex items-center gap-3">
-    
-          <button
-            onClick={handleLogout}
-            className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <SiteHeader homePath="/home" showLogout onLogout={handleLogout} />
 
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-white to-green-100 animate-pulse-slow z-0" />
-
-      <div className="relative z-10 p-6 pt-24">
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="relative z-10 p-6 pt-8">
         {/* Admin: Pay for students — promoter's discount applies for schools added by promoter */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-3xl mx-auto mb-8 bg-white p-6 rounded-2xl shadow-lg border border-green-100"
+          className="theme-card mx-auto mb-8 max-w-3xl"
         >
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Pay for students (School)</h2>
+          <h2 className="theme-section-title mb-2 !text-2xl">Pay for students (School)</h2>
           <p className="text-sm text-gray-600 mb-4">Select school. If the school was added by a promoter, that promoter&apos;s discount is applied by default.</p>
           <label className="block mb-2">
             <span className="font-medium text-gray-700">Select school</span>
             <select
               value={selectedSchoolId}
               onChange={(e) => setSelectedSchoolId(e.target.value)}
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg bg-white"
+              className="theme-input mt-1"
             >
               <option value="">— Select school —</option>
               {promoterSchools.map((s) => (
@@ -92,9 +65,9 @@ function Payment() {
             </select>
           </label>
           {selectedSchool && promoterPromo && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-              <p className="text-green-800 font-medium">Promoter discount applied by default</p>
-              <p className="text-sm text-green-700 mt-1">Code: <strong>{promoterPromo.code}</strong> — {promoterPromo.discount} off (school added by promoter)</p>
+            <div className="mt-4 rounded-xl border border-green-200 bg-green-50/80 p-4">
+              <p className="font-label font-medium text-green-800">Promoter discount applied by default</p>
+              <p className="mt-1 text-sm text-green-700">Code: <strong>{promoterPromo.code}</strong> — {promoterPromo.discount} off (school added by promoter)</p>
               <p className="text-sm text-gray-700 mt-2">Amount: ₹{studentPaymentAmount} → <strong>₹{discountedAmount}</strong></p>
             </div>
           )}
@@ -110,8 +83,8 @@ function Payment() {
           transition={{ duration: 0.6 }}
           className="max-w-xl mx-auto mb-8 text-center"
         >
-          <h2 className="text-3xl font-extrabold text-green-700 mb-2">You're Choosing:</h2>
-          <div className="bg-green-100 text-green-800 font-semibold py-3 px-6 rounded-xl shadow inline-block">
+          <h2 className="theme-page-title !mb-2">You're Choosing:</h2>
+          <div className="inline-block rounded-xl bg-peach-highlight px-6 py-3 font-label font-semibold text-brand-orange shadow">
             💎 Premium Plan — ₹199/month
           </div>
         </motion.div>
@@ -121,7 +94,7 @@ function Payment() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-2xl space-y-8"
+          className="theme-card-lg mx-auto max-w-3xl space-y-8"
         >
           {/* Payment Method Switch */}
           <div className="flex justify-center gap-6 flex-wrap">
@@ -131,10 +104,10 @@ function Payment() {
                 whileTap={{ scale: 0.95 }}
                 whileHover={{ scale: 1.05 }}
                 onClick={() => setSelectedMethod(method)}
-                className={`px-5 py-2 rounded-full border-2 font-medium transition ${
+                className={`rounded-full border-2 px-5 py-2 font-label font-medium transition ${
                   selectedMethod === method
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'border-gray-300 text-gray-700 hover:bg-green-100'
+                    ? 'border-brand-orange bg-brand-orange text-white'
+                    : 'border-orange-200/70 text-gray-700 hover:bg-peach-highlight/50'
                 }`}
               >
                 {method === 'card' && '💳 Card'}
@@ -236,7 +209,7 @@ function Payment() {
                 {['Paytm', 'PhonePe', 'Google Pay', 'Amazon Pay'].map((wallet) => (
                   <div
                     key={wallet}
-                    className="border rounded-xl py-4 text-center font-semibold text-gray-700 bg-gray-50 hover:bg-green-50 cursor-pointer"
+                    className="cursor-pointer rounded-xl border border-orange-200/70 bg-white/50 py-4 text-center font-label font-semibold text-gray-700 hover:bg-peach-highlight/40"
                   >
                     {wallet}
                   </div>
@@ -248,7 +221,7 @@ function Payment() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full mt-6 bg-green-600 text-white py-3 rounded-xl text-lg hover:bg-green-700 transition"
+            className="theme-btn-primary w-full mt-6 py-3 text-lg"
           >
             Pay ₹199 Now
           </motion.button>

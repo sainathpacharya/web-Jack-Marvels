@@ -11,17 +11,13 @@ function EventDetail() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-green-50 p-6 pt-28"   style={{
-      backgroundImage: `url(${bgImage})`,
-    }}>
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-        <h2 className="text-3xl font-bold text-green-700 text-center capitalize">
-          {id} Event Videos
-        </h2>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 text-sm font-medium"
-        >
+    <div
+      className="theme-page bg-cover bg-center bg-no-repeat pt-28"
+      style={{ backgroundImage: `url(${bgImage})` }}
+    >
+      <div className="mb-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <h2 className="theme-page-title !mb-0 capitalize">{id} Event Videos</h2>
+        <button type="button" onClick={() => setShowUploadModal(true)} className="theme-btn-primary">
           Upload Video
         </button>
       </div>
@@ -45,7 +41,7 @@ function EventDetail() {
 
       {selectedVideo && (
         <div className="mt-10">
-          <h3 className="text-2xl text-green-700 font-semibold mb-4 text-center">
+          <h3 className="mb-4 text-center font-script text-3xl text-purple-800">
             Now Playing: {selectedVideo.title}
           </h3>
           <div className="flex justify-center">
@@ -58,7 +54,7 @@ function EventDetail() {
           <div className="flex justify-center mt-4">
             <button
               onClick={() => setShowUploadModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700"
+              className="theme-btn-primary flex-1 py-2"
             >
               Upload Video
             </button>
@@ -68,13 +64,13 @@ function EventDetail() {
 
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Upload Video</h3>
-            <p className="text-gray-600 text-sm mb-4">Upload your performance video for this event.</p>
-            <input type="file" accept="video/*" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-green-50 file:text-green-700" />
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowUploadModal(false)} className="flex-1 py-2 border border-gray-300 rounded-lg">Cancel</button>
-              <button onClick={() => { setShowUploadModal(false); alert('Upload started (demo).'); }} className="flex-1 py-2 bg-green-600 text-white rounded-lg">Upload</button>
+          <div className="theme-card-lg w-full max-w-md">
+            <h3 className="mb-4 font-script text-3xl text-purple-800">Upload Video</h3>
+            <p className="mb-4 font-body text-sm text-gray-600">Upload your performance video for this event.</p>
+            <input type="file" accept="video/*" className="w-full text-sm text-gray-500 file:mr-4 file:rounded file:border-0 file:bg-peach-highlight file:px-4 file:py-2 file:font-label file:text-brand-orange" />
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => setShowUploadModal(false)} className="theme-btn-secondary flex-1 py-2">Cancel</button>
+              <button type="button" onClick={() => { setShowUploadModal(false); alert('Upload started (demo).'); }} className="theme-btn-primary flex-1 py-2">Upload</button>
             </div>
           </div>
         </div>

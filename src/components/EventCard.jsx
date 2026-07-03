@@ -3,11 +3,11 @@ import { getAssetUrl } from '../services/eventsService';
 
 export function EventCardSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
-      <div className="w-full h-40 bg-slate-200" />
+    <div className="theme-event-card animate-pulse overflow-hidden">
+      <div className="h-40 w-full bg-orange-100/50" />
       <div className="p-4">
-        <div className="h-4 bg-slate-200 rounded w-2/3 mb-2" />
-        <div className="h-3 bg-slate-100 rounded w-full" />
+        <div className="mb-2 h-5 w-2/3 rounded bg-orange-100/60" />
+        <div className="h-3 w-full rounded bg-orange-50" />
       </div>
     </div>
   );
@@ -16,7 +16,7 @@ export function EventCardSkeleton() {
 export default function EventCard({ event, onClick }) {
   return (
     <article
-      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition cursor-pointer"
+      className="theme-event-card"
       onClick={() => onClick?.(event)}
       role="button"
       tabIndex={0}
@@ -24,21 +24,20 @@ export default function EventCard({ event, onClick }) {
         if (e.key === 'Enter' || e.key === ' ') onClick?.(event);
       }}
     >
-      <div className="w-full h-40 bg-slate-100 overflow-hidden flex items-center justify-center">
+      <div className="flex h-40 w-full items-center justify-center overflow-hidden bg-white/50">
         <img
           src={getAssetUrl(event?.eventGifOrImage)}
           alt={event?.eventName || 'Event'}
-          className="w-full h-full object-contain"
+          className="h-full w-full object-contain"
           loading="lazy"
         />
       </div>
       <div className="p-4">
-        <h4 className="font-semibold text-base mb-1">{event?.eventName || 'Untitled event'}</h4>
-        <p className="text-sm text-gray-600 line-clamp-2">
+        <h4 className="mb-1 font-script text-2xl text-purple-800">{event?.eventName || 'Untitled event'}</h4>
+        <p className="line-clamp-2 font-body text-sm text-gray-600">
           {event?.description || 'Participate, showcase your talent, and win recognition.'}
         </p>
       </div>
     </article>
   );
 }
-

@@ -55,7 +55,7 @@ function StudentTable({
   if (shouldVirtualize) {
     return (
       <div className="mt-4 overflow-hidden rounded-xl border border-sky-100 bg-white">
-        <div className="grid grid-cols-6 bg-sky-50 px-4 py-3 text-left text-sm font-semibold text-sky-900">
+        <div className="grid grid-cols-6 bg-white/60 px-4 py-3 text-left text-sm font-semibold text-purple-800">
           {SORTABLE_HEADERS.map((header) => (
             <button
               key={header.key}
@@ -85,7 +85,7 @@ function StudentTable({
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-sky-100 bg-white">
       <table className="min-w-full text-sm">
-        <thead className="bg-sky-50 text-left text-sky-900">
+        <thead className="bg-white/60 text-left text-purple-800">
           <tr>
             {SORTABLE_HEADERS.map((header) => (
               <th key={header.key} className="px-4 py-3 font-semibold">

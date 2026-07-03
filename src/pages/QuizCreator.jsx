@@ -51,12 +51,12 @@ function QuizCreator() {
   };
   return (
     <div>
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-pink-50 p-6 pt-8">
+      <div className="theme-page p-6 pt-8">
       <motion.h2
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-4xl font-extrabold text-center text-pink-700 mb-10"
+        className="theme-page-title text-center"
       >
         Create Quiz Paper
       </motion.h2>
@@ -67,7 +67,7 @@ function QuizCreator() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-white p-6 rounded-xl shadow-lg space-y-4"
+          className="theme-card space-y-4"
         >
           <div>
             <span className="font-medium text-gray-700">Question</span>
@@ -145,7 +145,7 @@ function QuizCreator() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full mt-2 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+              className="w-full mt-2 theme-btn-primary py-2"
               onClick={() => setShowPreview(true)}
             >
               Release Question Paper

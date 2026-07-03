@@ -30,12 +30,12 @@ export default function UploadToolbar({
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-4">
+    <div className="mt-4 rounded-xl border border-orange-100/60 bg-white/50 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="button"
           onClick={onDownloadTemplate}
-          className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+          className="theme-btn-primary"
         >
           Download Excel Template
         </button>
@@ -53,7 +53,7 @@ export default function UploadToolbar({
           onMouseEnter={onUploadIntent}
           onFocus={onUploadIntent}
           disabled={isUploading}
-          className="rounded-lg border border-sky-300 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100 disabled:opacity-60"
+          className="theme-btn-secondary disabled:opacity-60"
         >
           Choose File
         </button>
@@ -77,7 +77,7 @@ export default function UploadToolbar({
       {isUploading ? (
         <div className="mt-3">
           <div className="h-2 w-full rounded bg-slate-200">
-            <div className="h-2 rounded bg-sky-600 transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+            <div className="h-2 rounded bg-brand-orange transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
           </div>
           <p className="mt-1 text-xs text-gray-600">{uploadProgress}%</p>
         </div>

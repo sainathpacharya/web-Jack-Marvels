@@ -14,6 +14,7 @@ import { hydrateAuth } from '../store/slices/authSlice';
 import { fetchEvents } from '../store/slices/eventsSlice';
 import EventCard, { EventCardSkeleton } from '../components/EventCard';
 import { getAssetUrl } from '../services/eventsService';
+import SiteHeader from '../components/layout/SiteHeader';
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -234,54 +235,26 @@ export default function Landing() {
     eventsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
-    <div className="font-sans text-gray-800">
-      <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-green-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <div className="text-xl font-bold text-green-800">Alpha Vlogs</div>
-        </button>
-        {/* <nav className="hidden md:flex space-x-6 text-sm">
-            <a href="#" className="hover:text-green-700">Home</a>
-            <a href="#" className="hover:text-green-700">About</a>
-            <a href="#" className="hover:text-green-700">Blog</a>
-            <a href="#" className="hover:text-green-700">Contact</a>
-          </nav> */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/Register')}
-            className="border border-green-600 text-green-700 px-4 py-2 rounded-full hover:bg-green-50 text-sm"
-          >
-            Register
-          </button>
-          <button
-            onClick={() => { setShowModal(true) }}
-            className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 text-sm"
-          >
-            Login
-          </button>
-        </div>
-      </header>
+    <div>
+      <SiteHeader
+        homePath="/home"
+        showRegister
+        showLogin
+        onRegister={() => navigate('/Register')}
+        onLogin={() => setShowModal(true)}
+      />
       {/* Hero Section */}
-      <section className="flex flex-col-reverse md:flex-row items-center justify-between px-6 md:px-20 py-16 bg-gradient-to-r bg-green-100 shadow">
-        <div className="md:w-1/2 text-center md:text-left">
-          <h1 className="text-4xl font-bold mb-4 leading-tight">
+      <section className="theme-hero flex flex-col-reverse items-center justify-between md:flex-row">
+        <div className="text-center md:w-1/2 md:text-left">
+          <h1 className="theme-display-title mb-4 leading-tight">
             Create. Compete. Get Recognized.
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 font-body text-gray-600">
             Discover student events built for coding, design, culture, and innovation. Participate in challenges, showcase your skills, and compete with peers through high-impact experiences. Earn rewards, gain recognition, and build achievements that accelerate your growth.
           </p>
           <button
             onClick={scrollToEvents}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full text-sm"
+            className="theme-btn-primary px-6 py-3"
           >
             Explore Events
           </button>
@@ -332,9 +305,9 @@ export default function Landing() {
               ease: "easeInOut",
               delay: idx * 0.3, // optional: staggered bounce
             }}
-            className="bg-indigo-50 p-6 rounded-xl shadow-lg hover:shadow-2xl transform transition duration-300"
+            className="theme-stat-card transform transition duration-300 hover:shadow-lg"
           >
-            <h3 className="text-3xl font-bold text-indigo-700 mb-2">{item.split(' ')[0]}</h3>
+            <h3 className="mb-2 font-display text-3xl font-bold text-brand-orange">{item.split(' ')[0]}</h3>
             <p className="text-gray-600 text-sm">{item.split(' ').slice(1).join(' ')}</p>
           </motion.div>
         ))}
@@ -344,11 +317,11 @@ export default function Landing() {
 
 
       {/* About Section with Icons */}
-      {landingPageDetails.actions.length > 0 && <section className="px-6 md:px-20 py-14 bg-blue-50">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+      {landingPageDetails.actions.length > 0 && <section className="theme-section">
+        <div className="grid grid-cols-1 gap-8 text-center sm:grid-cols-3">
           {landingPageDetails.actions.map((item, idx) => (
-            <div key={idx} className="bg-white p-6 rounded-xl shadow hover:shadow-md transition">
-              <div className="text-indigo-600 text-lg font-semibold mb-2">{item.title}</div>
+            <div key={idx} className="theme-card hover:shadow-md">
+              <div className="mb-2 font-script text-2xl text-purple-800">{item.title}</div>
               <p className="text-sm text-gray-500">Lorem ipsum dolor sit amet consectetur.</p>
             </div>
           ))}
@@ -356,11 +329,11 @@ export default function Landing() {
       </section>}
 
       {/* Events Section */}
-      <section ref={eventsSectionRef} className="px-6 md:px-20 py-16">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold">Take a look at our Events</h2>
+      <section ref={eventsSectionRef} className="theme-section">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="theme-section-title">Take a look at our Events</h2>
           <button
-            className="text-lg font-bold text-indigo-700 hover:underline"
+            className="font-script text-2xl font-bold text-brand-orange hover:underline"
             onClick={() => setShowModal(true)}
           >
             View All
@@ -482,19 +455,19 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white px-6 md:px-20 py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-sm">
+      <footer className="theme-footer">
+        <div className="grid grid-cols-1 gap-8 text-sm sm:grid-cols-3">
           <div>
-            <h4 className="text-lg font-bold mb-2">About Us</h4>
+            <h4 className="mb-2 font-script text-2xl text-purple-800">About Us</h4>
             <p>Interactive education platform empowering youth through events and learning.</p>
           </div>
           <div>
-            <h4 className="text-lg font-bold mb-2">Contact</h4>
+            <h4 className="mb-2 font-script text-2xl text-purple-800">Contact</h4>
             <p>Email: support@alphavlogs.com</p>
             <p>Phone: +91 98765 43210</p>
           </div>
           <div>
-            <h4 className="text-lg font-bold mb-2">Quick Links</h4>
+            <h4 className="mb-2 font-script text-2xl text-purple-800">Quick Links</h4>
             <ul className="space-y-1">
               <li><a href="#" className="hover:underline">Events</a></li>
               <li><a href="#" className="hover:underline">Login</a></li>
@@ -503,7 +476,7 @@ export default function Landing() {
             </ul>
           </div>
         </div>
-        <div className="text-center text-xs text-gray-400 mt-10">
+        <div className="mt-10 text-center text-xs text-gray-500">
           © 2025 Alpha Vlogs. All rights reserved.
         </div>
       </footer>
@@ -521,39 +494,38 @@ export default function Landing() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ duration: 0.4 }}
-              className="bg-gradient-to-br from-green-100 via-white to-blue-100 rounded-xl shadow-2xl w-full max-w-md p-8"
+              className="theme-card-lg w-full max-w-md"
             >
-              <h2 className="text-xl font-bold mb-4 text-center text-gray-800">Login to Continue</h2>
+              <h2 className="theme-section-title mb-4 text-center">Login to Continue</h2>
               <input
                 type="email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Email"
-                className="w-full p-3 mb-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="theme-input mb-3"
               />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full p-3 mb-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400"
+                className="theme-input mb-3"
               />
-              <button onClick={handleLogin} className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 rounded">
-
+              <button onClick={handleLogin} className="theme-btn-primary w-full py-2">
                 Login
               </button>
-              <p className="mt-4 text-sm text-center">
+              <p className="mt-4 text-center font-label text-sm text-gray-600">
                 Create an account?{' '}
                 <span
                   onClick={() => navigate('/Register')}
-                  className="text-green-700 underline font-semibold cursor-pointer"
+                  className="cursor-pointer font-semibold text-brand-orange underline"
                 >
                   Register
                 </span>
               </p>
               <button
                 onClick={() => setShowModal(false)}
-                className="mt-4 w-full text-sm text-gray-500 hover:underline"
+                className="mt-4 w-full font-script text-lg text-gray-500 hover:underline"
               >
                 Cancel
               </button>
@@ -593,8 +565,8 @@ export default function Landing() {
                 </button>
               </div>
               <div className="p-6 space-y-2">
-                <h3 className="text-2xl font-bold text-indigo-800">{selectedEvent.eventName}</h3>
-                <p className="text-gray-700">{selectedEvent.description}</p>
+                <h3 className="font-script text-3xl text-purple-800">{selectedEvent.eventName}</h3>
+                <p className="font-body text-gray-700">{selectedEvent.description}</p>
               </div>
             </motion.div>
           </motion.div>

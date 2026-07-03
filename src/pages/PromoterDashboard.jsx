@@ -9,6 +9,7 @@ import { selectRoleId } from '../store/selectors/authSelectors';
 import { useCreateSchoolMutation, useInfiniteSchoolsQuery } from '../features/schools/hooks/useSchoolsQuery';
 import { useNotifications } from '../components/notifications/NotificationProvider';
 import useNavigationPrefetch from '../hooks/useNavigationPrefetch';
+import { getNavColor } from '../lib/adminTheme';
 
 const SIDEBAR_ITEMS = [
   { label: 'Dashboard', path: 'dashboard' },
@@ -165,31 +166,35 @@ export default function PromoterDashboard() {
   const historyEntries = [...historyFromSchools, ...STATIC_PROMOTER_HISTORY.filter((h) => !mergedSchools.some((s) => s.name === h.name && s.addedAt === h.date))];
 
   return (
-    <div className="flex min-h-screen bg-[#fff7e8] flex-col">
+    <div className="flex min-h-screen flex-col">
       <AppHeader onLogout={handleLogout} theme="promoter" />
       <div className="flex flex-1">
       {/* Sidebar */}
-      <aside className="hidden md:flex w-56 bg-[#ffe6b3] border-r border-amber-200 shadow-sm flex-col">
-        <div className="p-5 border-b border-amber-200">
-          <span className="text-2xl font-bold text-amber-700">JACK</span>
+      <aside className="hidden w-56 flex-col border-r border-orange-100/60 bg-sidebar-peach md:flex">
+        <div className="border-b border-orange-100/80 p-5">
+          <span className="font-display text-2xl font-bold text-brand-orange">ALPHA VLOGS</span>
+          <p className="mt-1 font-label text-sm font-semibold text-green-800">Promoter Panel</p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 space-y-1 p-3">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
+              type="button"
               onClick={() => setActiveNav(item.path)}
               onMouseEnter={() => {
                 if (item.path === 'dashboard') prefetchByPath('/promoter');
               }}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
-                activeNav === item.path ? 'bg-amber-200 text-amber-900' : 'text-gray-700 hover:bg-amber-100'
+              className={`w-full rounded-xl px-4 py-3 text-left font-script text-xl transition ${
+                activeNav === item.path
+                  ? 'bg-peach-highlight text-gray-800 shadow-sm'
+                  : `${getNavColor(item.path)} hover:bg-peach-highlight/50`
               }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100" />
+        <div className="border-t border-orange-100/80 p-3" />
       </aside>
 
       {sidebarOpen && (
@@ -200,17 +205,19 @@ export default function PromoterDashboard() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-56 bg-[#ffe6b3] border-r border-amber-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-orange-100/60 bg-sidebar-peach transform transition-transform duration-200 md:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-amber-200">
-          <span className="text-2xl font-bold text-amber-700">JACK</span>
+        <div className="border-b border-orange-100/80 p-5">
+          <span className="font-display text-2xl font-bold text-brand-orange">ALPHA VLOGS</span>
+          <p className="mt-1 font-label text-sm font-semibold text-green-800">Promoter Panel</p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 space-y-1 p-3">
           {SIDEBAR_ITEMS.map((item) => (
             <button
               key={item.path}
+              type="button"
               onClick={() => {
                 setActiveNav(item.path);
                 setSidebarOpen(false);
@@ -218,23 +225,21 @@ export default function PromoterDashboard() {
               onMouseEnter={() => {
                 if (item.path === 'dashboard') prefetchByPath('/promoter');
               }}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition ${
+              className={`w-full rounded-xl px-4 py-3 text-left font-script text-xl transition ${
                 activeNav === item.path
-                  ? 'bg-amber-200 text-amber-900'
-                  : 'text-gray-700 hover:bg-amber-100'
+                  ? 'bg-peach-highlight text-gray-800 shadow-sm'
+                  : `${getNavColor(item.path)} hover:bg-peach-highlight/50`
               }`}
             >
               {item.label}
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-gray-100">
-          {/* Logout is handled from the top header for consistent UX */}
-        </div>
+        <div className="border-t border-orange-100/80 p-3" />
       </aside>
 
       {/* Main - static data for now; TODO: replace with API */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
+      <main className="admin-main">
         <div className="md:hidden flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
           <button
             type="button"
@@ -257,14 +262,14 @@ export default function PromoterDashboard() {
               <path d="M4 18h16" />
             </svg>
           </button>
-          <div className="text-lg font-bold text-gray-800">
-            {activeNav === 'dashboard' ? roleTitle : 'HISTORY'}
-          </div>
+          <h1 className="font-script text-3xl font-bold text-purple-800">
+            {activeNav === 'dashboard' ? roleTitle : 'History'}
+          </h1>
           <div />
         </div>
 
-        <h1 className="hidden md:block text-2xl font-bold text-gray-800 mb-6">
-          {activeNav === 'dashboard' ? `${roleTitle} DASHBOARD` : 'History'}
+        <h1 className="mb-6 hidden font-script text-4xl font-bold text-purple-800 md:block md:text-5xl">
+          {activeNav === 'dashboard' ? `${roleTitle} Dashboard` : 'History'}
         </h1>
 
         {activeNav === 'dashboard' && (
@@ -433,41 +438,41 @@ export default function PromoterDashboard() {
                 value={schoolForm.name}
                 onChange={(e) => handleSchoolFormChange('name', e.target.value)}
                 placeholder="School name *"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="theme-input"
               />
               <textarea
                 value={schoolForm.address}
                 onChange={(e) => handleSchoolFormChange('address', e.target.value)}
                 placeholder="Address *"
                 rows={2}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                className="theme-input resize-none"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   value={schoolForm.city}
                   onChange={(e) => handleSchoolFormChange('city', e.target.value)}
                   placeholder="City *"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="theme-input"
                 />
                 <input
                   value={schoolForm.state}
                   onChange={(e) => handleSchoolFormChange('state', e.target.value)}
                   placeholder="State *"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="theme-input"
                 />
               </div>
               <input
                 value={schoolForm.pincode}
                 onChange={(e) => handleSchoolFormChange('pincode', e.target.value)}
                 placeholder="Pincode * (6 digits)"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="theme-input"
                 maxLength={6}
               />
               <input
                 value={schoolForm.contactName}
                 onChange={(e) => handleSchoolFormChange('contactName', e.target.value)}
                 placeholder="Contact person name *"
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                className="theme-input"
               />
               <input
                 value={schoolForm.contactPhone}
@@ -512,7 +517,7 @@ export default function PromoterDashboard() {
                     value={schoolForm.branchCode}
                     onChange={(e) => handleSchoolFormChange('branchCode', e.target.value)}
                     placeholder="e.g. BR01, Main, North"
-                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    className="theme-input"
                   />
                 </div>
               )}
@@ -520,7 +525,7 @@ export default function PromoterDashboard() {
             <div className="flex gap-3 mt-4 pt-3 border-t border-gray-100">
               <button
                 onClick={() => { setShowAddSchool(false); setSchoolForm(initialSchoolForm()); }}
-                className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="theme-btn-secondary flex-1 py-2"
               >
                 Cancel
               </button>

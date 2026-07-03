@@ -135,7 +135,7 @@ export default function StudentsPage() {
 
       {uploadResult ? (
         <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-sky-100 bg-white p-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-sky-50 p-3">
+          <div className="rounded-lg bg-white/50 p-3">
             <p className="text-xs text-gray-600">Total Rows</p>
             <p className="text-lg font-semibold text-sky-900">{uploadResult.totalRows ?? 0}</p>
           </div>

@@ -6,29 +6,24 @@ function EventsSection({ events = [], getEventState, formatRemaining, onOpenSche
   if (!events.length) return null;
   return (
     <>
-      <section className="relative bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-xl overflow-hidden shadow-lg mb-10">
-        <div className="px-6 py-10 md:px-20 text-white text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-2">Explore Our Exciting Events</h2>
-          <p className="text-sm md:text-base opacity-90">
-            Discover, participate, and shine in competitions crafted to showcase every child&apos;s unique talent!
-          </p>
-        </div>
-        <div className="absolute right-0 bottom-0 opacity-20">
-          <img src="https://cdn-icons-png.flaticon.com/512/3163/3163619.png" alt="Event Icon" className="h-40 w-40 object-contain" loading="lazy" decoding="async" />
-        </div>
+      <section className="theme-banner mb-10">
+        <h2 className="theme-section-title mb-2">Explore Our Exciting Events</h2>
+        <p className="font-body text-sm text-gray-600 md:text-base">
+          Discover, participate, and shine in competitions crafted to showcase every child&apos;s unique talent!
+        </p>
       </section>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+      <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {events.map((item, i) => {
           const { isActive, remainingMs } = getEventState(item);
           return (
             <button
               key={`${item.name}-${i}`}
               type="button"
-              className="bg-white p-4 rounded-2xl shadow-lg hover:shadow-2xl transition flex flex-col items-center border border-gray-200 hover:-translate-y-1"
+              className="theme-card flex flex-col items-center p-4 transition hover:-translate-y-1 hover:shadow-lg"
               onClick={() => onOpenSchedule(item)}
             >
-              <div className="bg-white p-3 rounded-full shadow-inner">
+              <div className="rounded-full bg-white/80 p-3 shadow-inner">
                 {item.gifUrl ? (
                   <img
                     src={item.gifUrl}
@@ -38,16 +33,18 @@ function EventsSection({ events = [], getEventState, formatRemaining, onOpenSche
                     decoding="async"
                   />
                 ) : item.animation ? (
-                  <Suspense fallback={<div className="h-20 w-20 animate-pulse rounded-full bg-slate-100" />}>
+                  <Suspense fallback={<div className="h-20 w-20 animate-pulse rounded-full bg-orange-100/50" />}>
                     <LottiePlayer src={item.animation} className="h-20 w-20" />
                   </Suspense>
                 ) : null}
               </div>
-              <span className="mt-3 text-sm font-semibold text-gray-700 text-center">{item.name}</span>
+              <span className="mt-3 text-center font-script text-xl text-purple-800">{item.name}</span>
               {!isActive ? (
-                <div className="mt-1 text-xs text-gray-400 text-center">Inactive</div>
+                <div className="mt-1 text-center text-xs text-gray-400">Inactive</div>
               ) : (
-                <div className="mt-1 text-xs text-green-700 text-center">Ends in {formatRemaining(remainingMs)}</div>
+                <div className="mt-1 text-center text-xs text-green-700">
+                  Ends in {formatRemaining(remainingMs)}
+                </div>
               )}
             </button>
           );

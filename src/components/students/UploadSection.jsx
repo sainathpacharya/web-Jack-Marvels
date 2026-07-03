@@ -52,7 +52,7 @@ export default function UploadSection({
         <button
           type="button"
           onClick={onDownloadTemplate}
-          className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800"
+          className="theme-btn-primary"
         >
           Download Excel Template
         </button>
@@ -70,7 +70,7 @@ export default function UploadSection({
           validateAndSetFile(e.dataTransfer.files?.[0]);
         }}
         className={`mt-4 rounded-xl border-2 border-dashed p-6 text-center ${
-          isDragging ? 'border-sky-500 bg-sky-50' : 'border-sky-200 bg-white'
+          isDragging ? 'border-brand-orange bg-peach-highlight/40' : 'border-orange-200/70 bg-white/60'
         }`}
       >
         <p className="text-sm text-gray-700">Drag & drop .xlsx/.csv here or choose a file</p>
@@ -115,7 +115,7 @@ export default function UploadSection({
       {isUploading ? (
         <div className="mt-3">
           <div className="h-2 w-full rounded bg-slate-200">
-            <div className="h-2 rounded bg-sky-600 transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+            <div className="h-2 rounded bg-brand-orange transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
           </div>
           <p className="mt-1 text-xs text-gray-600">{uploadProgress}%</p>
         </div>

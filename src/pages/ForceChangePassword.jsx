@@ -78,9 +78,9 @@ export default function ForceChangePassword() {
   const loading = changePasswordStatus === 'loading';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-green-100 px-4 py-10">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">Set a new password</h1>
+    <div className="theme-page flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="theme-card-lg w-full max-w-md">
+        <h1 className="theme-section-title mb-1 !text-2xl">Set a new password</h1>
         <p className="text-sm text-gray-600 mb-6">
           Your account requires a new password before you can continue. Use a strong password you have
           not used elsewhere.
@@ -130,7 +130,7 @@ export default function ForceChangePassword() {
           <button
             type="submit"
             disabled={loading || !isValid}
-            className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="theme-btn-primary w-full py-3 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving…' : 'Update password'}
           </button>

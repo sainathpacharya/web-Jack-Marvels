@@ -11,7 +11,7 @@ In GitHub: **Settings -> Secrets and variables -> Actions -> New repository secr
 
 Production secrets (used by `.github/workflows/deploy-ec2.yml`):
 
-- `EC2_HOST` -> `54.198.71.21`
+- `EC2_HOST` -> `32.192.216.15`
 - `EC2_USER` -> `ec2-user`
 - `EC2_SSH_KEY` -> full private key content from your PEM file
 
@@ -51,7 +51,7 @@ Run:
 
 ```bash
 scripts/deploy-ec2.sh \
-  --host 54.198.71.21 \
+  --host 32.192.216.15 \
   --user ec2-user \
   --key /Users/nagasainathreddy/Downloads/jackmarvels-key.pem \
   --path /var/www/alpha-frontend
@@ -61,7 +61,7 @@ If you already built locally and want to skip rebuild:
 
 ```bash
 scripts/deploy-ec2.sh \
-  --host 54.198.71.21 \
+  --host 32.192.216.15 \
   --user ec2-user \
   --key /Users/nagasainathreddy/Downloads/jackmarvels-key.pem \
   --path /var/www/alpha-frontend \

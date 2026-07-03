@@ -13,9 +13,9 @@ export default function FilterBar({ filters, onFilterChange, classOptions = [], 
   return (
     <div className="mt-6 rounded-xl border border-sky-100 bg-[#f6fbff] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-sky-900">Filters</h2>
+        <h2 className="text-sm font-semibold text-purple-800">Filters</h2>
         {activeCount > 0 ? (
-          <span className="rounded-full bg-sky-700 px-2 py-0.5 text-xs font-medium text-white">{activeCount} active</span>
+          <span className="rounded-full bg-brand-orange px-2 py-0.5 text-xs font-medium text-white">{activeCount} active</span>
         ) : null}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { logoutFromServer } from '../api/auth';
+import SiteHeader from '../components/layout/SiteHeader';
 
 import eventsCatalog from '../data/eventsCatalog.json';
 
@@ -44,41 +45,14 @@ function Results() {
 
   return (
     <div>
-       <header className="flex justify-between items-center px-6 md:px-20 py-5 bg-gradient-to-r from-green-100 to-blue-100 shadow">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-3 cursor-pointer bg-transparent"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-14 h-14 object-contain rounded-full"
-          />
-          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-700 to-blue-800">
-            Alpha Vlogs
-          </h1>
-        </button>
-        <div className="flex items-center gap-3">
-    
-          <button
-            onClick={handleLogout}
-            className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 px-4 py-20 relative">
-      <div className="max-w-4xl mx-auto space-y-12">
-        {/* Header */}
+      <SiteHeader homePath="/home" showLogout onLogout={handleLogout} />
+      <div className="theme-page relative">
+      <div className="mx-auto max-w-4xl space-y-12">
         <motion.h2
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-4xl font-extrabold text-center text-green-800"
+          className="theme-page-title text-center"
         >
           Announce Event Winners
         </motion.h2>
@@ -88,7 +62,7 @@ function Results() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="bg-white p-6 rounded-2xl shadow-lg space-y-4"
+          className="theme-card space-y-4"
         >
           <div className="grid sm:grid-cols-2 gap-4">
             <label>
@@ -96,7 +70,7 @@ function Results() {
               <select
                 value={form.event}
                 onChange={(e) => setForm({ ...form, event: e.target.value })}
-                className="w-full mt-1 p-3 border border-gray-300 rounded-lg"
+                className="theme-input mt-1"
               >
                 <option value="">-- Select --</option>
                 {eventOptions.map((opt) => (
@@ -108,7 +82,7 @@ function Results() {
               <span className="text-gray-700 font-medium">Winner Name</span>
               <input
                 type="text"
-                className="w-full mt-1 p-3 border border-gray-300 rounded-lg"
+                className="theme-input mt-1"
                 placeholder="Student/Team Name"
                 value={form.winner}
                 onChange={(e) => setForm({ ...form, winner: e.target.value })}
@@ -118,7 +92,7 @@ function Results() {
               <span className="text-gray-700 font-medium">School</span>
               <input
                 type="text"
-                className="w-full mt-1 p-3 border border-gray-300 rounded-lg"
+                className="theme-input mt-1"
                 placeholder="e.g. Green Valley School"
                 value={form.school}
                 onChange={(e) => setForm({ ...form, school: e.target.value })}
@@ -128,7 +102,7 @@ function Results() {
               <span className="text-gray-700 font-medium">Area</span>
               <input
                 type="text"
-                className="w-full mt-1 p-3 border border-gray-300 rounded-lg"
+                className="theme-input mt-1"
                 placeholder="e.g. Hyderabad"
                 value={form.area}
                 onChange={(e) => setForm({ ...form, area: e.target.value })}
@@ -139,19 +113,19 @@ function Results() {
             <span className="text-gray-700 font-medium">Search & Select Winner Video</span>
             <input
               type="text"
-              className="w-full mt-1 mb-3 p-2 border border-gray-300 rounded-lg"
+              className="theme-input mb-3 mt-1"
               placeholder="Search videos..."
               value={videoSearch}
               onChange={(e) => setVideoSearch(e.target.value)}
             />
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto p-2 bg-gray-50 border rounded-xl">
+            <div className="grid max-h-[300px] grid-cols-2 gap-4 overflow-y-auto rounded-xl border border-orange-100/60 bg-white/50 p-2 sm:grid-cols-3">
               {videoLibrary
                 .filter((v) => v.title.toLowerCase().includes(videoSearch.toLowerCase()))
                 .map((v, idx) => (
                   <div
                     key={idx}
-                    className="bg-white p-2 rounded-lg shadow hover:shadow-md transition-all"
+                    className="theme-card !p-2 transition-all hover:shadow-md"
                   >
                     <video
                       src={v.url}
@@ -166,7 +140,7 @@ function Results() {
                         setForm({ ...form, video: v.url });
                         setVideoSearch('');
                       }}
-                      className="w-full bg-green-600 text-white py-1 rounded text-xs hover:bg-green-700"
+                      className="theme-btn-primary w-full py-1 !text-xs"
                     >
                       Select
                     </button>
@@ -187,7 +161,7 @@ function Results() {
           )}
           <button
             onClick={handleSubmit}
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+            className="theme-btn-primary w-full py-3"
           >
             Announce Winner
           </button>
@@ -202,9 +176,9 @@ function Results() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-xl shadow-md p-4"
+                className="theme-card"
               >
-                <h3 className="text-xl font-bold text-green-700 mb-1">{r.event}</h3>
+                <h3 className="mb-1 font-script text-2xl text-purple-800">{r.event}</h3>
                 <p>
                   <strong>🏆 {r.winner}</strong><br />
                   {r.school}, {r.area}
@@ -227,7 +201,7 @@ function Results() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed top-20 right-6 bg-green-600 text-white px-6 py-3 rounded-xl shadow-xl font-semibold z-50"
+            className="fixed right-6 top-20 z-50 rounded-xl theme-btn-primary px-6 py-3 shadow-xl"
           >
             ✅ Winner announced successfully!
           </motion.div>

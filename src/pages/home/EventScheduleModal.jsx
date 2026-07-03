@@ -30,11 +30,11 @@ function EventScheduleModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-              <input type="datetime-local" value={fromValue} onChange={(e) => onFromChange(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+              <input type="datetime-local" value={fromValue} onChange={(e) => onFromChange(e.target.value)} className="theme-input" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
-              <input type="datetime-local" value={toValue} onChange={(e) => onToChange(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
+              <input type="datetime-local" value={toValue} onChange={(e) => onToChange(e.target.value)} className="theme-input" />
             </div>
           </div>
 
@@ -49,7 +49,7 @@ function EventScheduleModal({
         </div>
 
         <div className="flex gap-3 mt-5 pt-3 border-t border-gray-100">
-          <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={onClose} className="theme-btn-secondary flex-1 py-2">Cancel</button>
           <button type="button" onClick={onSave} className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Save & Set Active</button>
         </div>
       </div>

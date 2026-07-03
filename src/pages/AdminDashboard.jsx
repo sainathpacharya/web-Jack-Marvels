@@ -52,6 +52,9 @@ import {
 } from '../lib/validation';
 import { eventDateRangeSchema } from '../lib/validation/schemas';
 import { zodErrorToFlatFieldErrors } from '../lib/validation/zodUtils';
+import AdminSidebar, { AdminMobileSidebar } from '../components/admin/AdminSidebar';
+import AdminPageTitle from '../components/admin/AdminPageTitle';
+import { EVENT_TABLE_HEADER_COLORS, getScriptNameColor } from '../lib/adminTheme';
 
 const AdminPromoterFormModal = lazy(() => import('../components/forms/admin/AdminPromoterFormModal'));
 const AdminInfluencerFormModal = lazy(() => import('../components/forms/admin/AdminInfluencerFormModal'));
@@ -727,131 +730,43 @@ export default function AdminDashboard() {
 
 
   return (
-    <div className="flex min-h-screen bg-gray-50 flex-col">
+    <div className="flex min-h-screen flex-col">
       <div className="flex flex-1">
-      {/* Sidebar */}
-      <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 shadow-sm flex-col">
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="p-5 border-b border-gray-100 flex flex-col items-center w-full cursor-pointer bg-white hover:bg-gray-50"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-16 h-16 object-contain mb-2"
-          />
-          <span className="text-xl font-bold text-blue-700">Alpha Vlogs</span>
-        </button>
-        <div className="px-4 pt-3">
-          <p className="mb-1 text-xs uppercase tracking-wide text-sky-700">Admin Panel</p>
-        </div>
-        <nav className="flex-1 p-3 space-y-2">
-          {SIDEBAR_ITEMS.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => handleSidebarNavClick(item.path)}
-              onMouseEnter={() => {
-                if (item.path === 'profile') prefetchByPath('/profile');
-                if (item.path === 'schools') prefetchByPath('/admin');
-                if (item.path === 'dashboard') prefetchByPath('/home');
-              }}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-3 ${
-                activeNav === item.path
-                  ? 'bg-sky-700 text-white shadow-sm'
-                  : 'text-sky-900 hover:bg-sky-100'
-              }`}
-            >
-              <item.icon className="h-4 w-4" aria-hidden="true" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full rounded-lg bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
+      <AdminSidebar
+        items={SIDEBAR_ITEMS}
+        activeNav={activeNav}
+        onNavClick={handleSidebarNavClick}
+        onLogoClick={() => navigate('/home')}
+        onLogout={handleLogout}
+        onMouseEnterItem={(path) => {
+          if (path === 'profile') prefetchByPath('/profile');
+          if (path === 'schools') prefetchByPath('/admin');
+          if (path === 'dashboard') prefetchByPath('/home');
+        }}
+      />
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-56 bg-white border-r border-gray-200 shadow-sm flex flex-col transform transition-transform duration-200 md:hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => navigate('/home')}
-          className="p-5 border-b border-gray-100 flex flex-col items-center w-full cursor-pointer bg-white hover:bg-gray-50"
-          aria-label="Go to Home"
-        >
-          <img
-            src="/alpha-vlogs-logo.png"
-            alt="Alpha Vlogs logo"
-            className="w-16 h-16 object-contain mb-2"
-          />
-          <span className="text-xl font-bold text-blue-700">Alpha Vlogs</span>
-        </button>
-        <div className="px-4 pt-3">
-          <p className="mb-1 text-xs uppercase tracking-wide text-sky-700">Admin Panel</p>
-        </div>
-        <nav className="flex-1 p-3 space-y-2">
-          {SIDEBAR_ITEMS.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => {
-                handleSidebarNavClick(item.path);
-                setSidebarOpen(false);
-              }}
-              onMouseEnter={() => {
-                if (item.path === 'profile') prefetchByPath('/profile');
-                if (item.path === 'schools') prefetchByPath('/admin');
-                if (item.path === 'dashboard') prefetchByPath('/home');
-              }}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-3 ${
-                activeNav === item.path
-                  ? 'bg-sky-700 text-white shadow-sm'
-                  : 'text-sky-900 hover:bg-sky-100'
-              }`}
-            >
-              <item.icon className="h-4 w-4" aria-hidden="true" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={() => {
-              setSidebarOpen(false);
-              handleLogout();
-            }}
-            className="w-full rounded-lg bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
-          >
-            Logout
-          </button>
-        </div>
-      </aside>
+      <AdminMobileSidebar
+        open={sidebarOpen}
+        items={SIDEBAR_ITEMS}
+        activeNav={activeNav}
+        onNavClick={handleSidebarNavClick}
+        onLogoClick={() => navigate('/home')}
+        onLogout={handleLogout}
+        onClose={() => setSidebarOpen(false)}
+        onMouseEnterItem={(path) => {
+          if (path === 'profile') prefetchByPath('/profile');
+          if (path === 'schools') prefetchByPath('/admin');
+          if (path === 'dashboard') prefetchByPath('/home');
+        }}
+      />
 
       {/* Main - static data for now; TODO: replace with API */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
-        <div className="md:hidden flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+      <main className="admin-main">
+        <div className="mb-4 flex items-center justify-between border-b border-orange-100/60 pb-2 md:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg border border-gray-200 bg-white"
+            className="rounded-lg border border-orange-200/60 bg-white/70 p-2"
             aria-label="Open navigation"
           >
             <svg
@@ -869,59 +784,41 @@ export default function AdminDashboard() {
               <path d="M4 18h16" />
             </svg>
           </button>
-          <div className="text-lg font-bold text-gray-800">
-            {activeNav === 'dashboard' && 'ADMIN'}
-            {activeNav === 'students' && 'Students'}
-            {activeNav === 'events' && 'Events'}
-            {activeNav === 'quiz' && 'Quiz'}
-            {activeNav === 'promotors' && 'Promoters'}
-            {activeNav === 'influencers' && 'Influencers'}
-            {activeNav === 'partners' && 'Partners'}
-            {activeNav === 'schools' && 'Schools'}
-          </div>
+          <AdminPageTitle activeNav={activeNav} className="!text-3xl" />
           <div />
         </div>
 
-        <h1 className="hidden md:block text-2xl font-bold text-gray-800 mb-6">
-          {activeNav === 'dashboard' && 'ADMIN DASHBOARD'}
-          {activeNav === 'students' && 'Students'}
-          {activeNav === 'events' && 'Events'}
-          {activeNav === 'quiz' && 'QUIZ'}
-          {activeNav === 'promotors' && 'Promotors'}
-          {activeNav === 'influencers' && 'Influencers'}
-          {activeNav === 'partners' && 'Partners'}
-          {activeNav === 'schools' && 'Schools'}
-        </h1>
+        <AdminPageTitle activeNav={activeNav} className="mb-6 hidden md:block" />
 
         {activeNav === 'dashboard' && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-                <p className="text-3xl font-bold text-blue-600">{STATIC_TOTAL_STUDENTS}</p>
-                <p className="text-gray-600 mt-1">Total Students</p>
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="admin-card">
+                <p className="font-display text-3xl font-bold text-blue-600">{STATIC_TOTAL_STUDENTS}</p>
+                <p className="mt-1 font-label text-gray-600">Total Students</p>
               </div>
-              <div className="bg-white rounded-xl shadow p-5 border border-gray-100">
-                <p className="text-3xl font-bold text-blue-600">{schoolsAddedCount}</p>
-                <p className="text-gray-600 mt-1">Schools Added</p>
+              <div className="admin-card">
+                <p className="font-display text-3xl font-bold text-blue-600">{schoolsAddedCount}</p>
+                <p className="mt-1 font-label text-gray-600">Schools Added</p>
               </div>
             </div>
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Recent Uploads</h2>
-              <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
+              <h2 className="admin-section-title mb-4">Recent Uploads</h2>
+              <div className="admin-list-panel">
                 {STATIC_RECENT_UPLOADS.map((name, i) => (
-                  <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer">
-                    <span className="text-gray-700">{name}</span>
+                  <div key={i} className="admin-list-row cursor-pointer">
+                    <span className="font-script text-xl text-gray-700">{name}</span>
                     <span className="text-gray-400">→</span>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Quiz Attempts</h2>
-              <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
+              <h2 className="admin-section-title mb-4">Quiz Attempts</h2>
+              <div className="admin-list-panel">
                 {STATIC_QUIZ_ATTEMPTS.map((name, i) => (
-                  <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer">
-                    <span className="text-gray-700">{name}</span>
+                  <div key={i} className="admin-list-row cursor-pointer">
+                    <span className="font-script text-xl text-gray-700">{name}</span>
                     <span className="text-gray-400">→</span>
                   </div>
                 ))}
@@ -931,14 +828,14 @@ export default function AdminDashboard() {
         )}
 
         {activeNav === 'students' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 divide-y divide-gray-100">
+          <div className="admin-list-panel">
             {STATIC_STUDENTS_LIST.map((s) => (
-              <div key={s.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
+              <div key={s.id} className="admin-list-row">
                 <div>
-                  <span className="text-gray-800 font-medium">{s.name}</span>
-                  <span className="text-gray-500 text-sm ml-2">{s.email}</span>
+                  <span className={`font-script text-xl ${getScriptNameColor(s.id)}`}>{s.name}</span>
+                  <span className="ml-2 font-body text-sm text-gray-500">{s.email}</span>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={s.status === 'active' ? 'admin-status-pill-active' : 'admin-status-pill'}>
                   {s.status}
                 </span>
               </div>
@@ -947,17 +844,16 @@ export default function AdminDashboard() {
         )}
 
         {activeNav === 'events' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
+          <div className="admin-panel">
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 text-gray-700">
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Event Name</th>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">From Date</th>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">To Date</th>
-                    <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Active</th>
+                    {['S No', 'Event Name', 'Status', 'From Date', 'To Date', 'Active'].map((label, i) => (
+                      <th key={label} className={`whitespace-nowrap ${EVENT_TABLE_HEADER_COLORS[i]}`}>
+                        {label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -983,24 +879,27 @@ export default function AdminDashboard() {
                     eventsList.map((event, idx) => {
                       const isActive = event.status === 'active';
                       return (
-                        <tr key={String(event.id)} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="px-5 py-4 whitespace-nowrap">{idx + 1}</td>
-                          <td className="px-5 py-4 text-gray-800 font-medium">{event.name || '-'}</td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <span className={`text-xs px-2 py-1 rounded ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        <tr key={String(event.id)}>
+                          <td className="whitespace-nowrap">{idx + 1}</td>
+                          <td className={`font-script text-2xl ${getScriptNameColor(idx)}`}>
+                            {event.name || '-'}
+                          </td>
+                          <td className="whitespace-nowrap">
+                            <span className={isActive ? 'admin-status-pill-active' : 'admin-status-pill'}>
                               {event.status}
                             </span>
                           </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                          <td className="whitespace-nowrap text-gray-700">
                             {event.fromDate ? String(event.fromDate).slice(0, 10) : '-'}
                           </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-gray-700">
+                          <td className="whitespace-nowrap text-gray-700">
                             {event.toDate ? String(event.toDate).slice(0, 10) : '-'}
                           </td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                          <td className="whitespace-nowrap">
+                            <label className="flex cursor-pointer items-center gap-2 text-gray-700">
                               <input
                                 type="checkbox"
+                                className="admin-checkbox"
                                 checked={isActive}
                                 disabled={!isAdmin || updateEventStatusMutation.isPending}
                                 aria-label={`Set event ${event.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
@@ -1028,7 +927,7 @@ export default function AdminDashboard() {
         {activationTargetEvent && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Activate Event</h3>
+              <h3 className="admin-section-title mb-2">Activate Event</h3>
               <p className="text-sm text-gray-500 mb-4">{activationTargetEvent.name || 'Selected event'}</p>
               <div className="space-y-3">
                 <label className="block">
@@ -1070,7 +969,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={closeActivationModal}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="theme-btn-secondary"
                 >
                   Cancel
                 </button>
@@ -1078,7 +977,7 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={confirmActivation}
                   disabled={updateEventStatusMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="admin-btn-primary disabled:opacity-50"
                 >
                   Save & Activate
                 </button>
@@ -1088,7 +987,7 @@ export default function AdminDashboard() {
         )}
 
         {activeNav === 'quiz' && (
-          <div className="bg-white rounded-xl shadow border border-gray-100 p-6 text-gray-500">
+          <div className="admin-card p-6 text-gray-500">
             No quiz records yet.
           </div>
         )}
@@ -1097,7 +996,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Promoters</h2>
+                <h2 className="admin-section-title">Promoters</h2>
                 <p className="text-sm text-gray-500">Add a promoter (admin) and it will appear below.</p>
               </div>
               <button
@@ -1107,23 +1006,23 @@ export default function AdminDashboard() {
                   if (canManageAdminData) setShowAddPromoter(true);
                 }}
                 disabled={!canManageAdminData}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                className="admin-btn-primary"
               >
                 Add Promoter
               </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-700">
+            <div className="admin-panel">
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                  <thead>
                     <tr>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Name</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile number</th>
-                      <th className="px-5 py-3 text-left font-semibold max-w-[180px] whitespace-normal">Email</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Promocode</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">S No</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Name</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Mobile number</th>
+                      <th className="max-w-[180px] whitespace-normal font-label text-xs font-bold uppercase tracking-wide text-gray-700">Email</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Promocode</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">
                         Status
                       </th>
                     </tr>
@@ -1139,10 +1038,10 @@ export default function AdminDashboard() {
                       pagedPromotersAdded.map((p, idx) => {
                         const isActive = (p.status || 'active') === 'active';
                         return (
-                          <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={p.id} className="border-b border-gray-100 hover:bg-white/40">
                             <td className="px-5 py-4 whitespace-nowrap">{promotersStartIndex + idx + 1}</td>
                             <td className="px-5 py-4">
-                              <span style={twoLineEllipsisStyle} className="font-semibold text-gray-800">
+                              <span style={twoLineEllipsisStyle} className="font-script text-xl text-gray-800">
                                 {p.name || '-'}
                               </span>
                             </td>
@@ -1177,6 +1076,7 @@ export default function AdminDashboard() {
                               <label className="flex items-center gap-2 cursor-pointer text-gray-700">
                                 <input
                                   type="checkbox"
+                                  className="admin-checkbox"
                                   checked={isActive}
                                   aria-label={`Set promoter ${p.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
                                   disabled={!canManageAdminData || updatePromotorStatusMutation.isPending}
@@ -1243,7 +1143,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Schools</h2>
+                <h2 className="admin-section-title">Schools</h2>
                 <p className="text-sm text-gray-500">Add a school (admin) and it will appear below.</p>
               </div>
               <div className="flex items-center gap-3">
@@ -1254,7 +1154,7 @@ export default function AdminDashboard() {
                     if (canManageAdminData) setShowAddSchool(true);
                   }}
                   disabled={!canManageAdminData}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                  className="admin-btn-primary"
                 >
                   Add School
                 </button>
@@ -1267,20 +1167,20 @@ export default function AdminDashboard() {
               </p>
             )}
 
-            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-700">
+            <div className="admin-panel">
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                  <thead>
                     <tr>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">School Name</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">branchCode</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile Number</th>
-                      <th className="px-5 py-3 text-left font-semibold max-w-[180px] whitespace-normal">Email</th>
-                      <th className="px-5 py-3 text-left font-semibold">Address</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Total students</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Active</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Action</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">S No</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">School Name</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">branchCode</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Mobile Number</th>
+                      <th className="max-w-[180px] whitespace-normal font-label text-xs font-bold uppercase tracking-wide text-gray-700">Email</th>
+                      <th className="font-label text-xs font-bold uppercase tracking-wide text-gray-700">Address</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Total students</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Active</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1306,10 +1206,10 @@ export default function AdminDashboard() {
                       pagedSchoolsAdded.map((s, idx) => {
                         const isActive = (s.status || 'active') === 'active';
                         return (
-                          <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={s.id} className="border-b border-gray-100 hover:bg-white/40">
                             <td className="px-5 py-4 whitespace-nowrap">{listOffset + idx + 1}</td>
                             <td className="px-5 py-4">
-                              <span style={twoLineEllipsisStyle} className="font-semibold text-gray-800">
+                              <span style={twoLineEllipsisStyle} className="font-script text-xl text-gray-800">
                                 {s.name}
                               </span>
                             </td>
@@ -1362,6 +1262,7 @@ export default function AdminDashboard() {
                               <label className="flex items-center gap-2 cursor-pointer text-gray-700">
                                   <input
                                     type="checkbox"
+                                    className="admin-checkbox"
                                     checked={isActive}
                                     disabled={!canManageAdminData || updateSchoolStatusMutation.isPending}
                                     aria-label={`Set school ${s.name} status to ${isActive ? 'inactive' : 'active'}`}
@@ -1498,13 +1399,13 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Influencers</h2>
+                <h2 className="admin-section-title">Influencers</h2>
                 <p className="text-sm text-gray-500">Add an influencer (admin) and it will appear below.</p>
               </div>
               <button
                 type="button"
                 disabled={!canManageAdminData}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="admin-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => {
                   if (!canManageAdminData) {
                     notifyError('Only admin can add influencers.');
@@ -1518,17 +1419,17 @@ export default function AdminDashboard() {
                 Add Influencer
               </button>
             </div>
-            <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-700">
+            <div className="admin-panel">
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                  <thead>
                     <tr>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Name</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile number</th>
-                      <th className="px-5 py-3 text-left font-semibold max-w-[180px] whitespace-normal">Email</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Promocode</th>
-                      <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">S No</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Name</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Mobile number</th>
+                      <th className="max-w-[180px] whitespace-normal font-label text-xs font-bold uppercase tracking-wide text-gray-700">Email</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Promocode</th>
+                      <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1542,10 +1443,10 @@ export default function AdminDashboard() {
                       pagedInfluencersAdded.map((row, idx) => {
                         const isActive = (row.status || 'active') === 'active';
                         return (
-                          <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={row.id} className="border-b border-gray-100 hover:bg-white/40">
                             <td className="px-5 py-4 whitespace-nowrap">{influencersStartIndex + idx + 1}</td>
                             <td className="px-5 py-4">
-                              <span style={twoLineEllipsisStyle} className="font-semibold text-gray-800">
+                              <span style={twoLineEllipsisStyle} className="font-script text-xl text-gray-800">
                                 {row.name || '-'}
                               </span>
                             </td>
@@ -1580,6 +1481,7 @@ export default function AdminDashboard() {
                               <label className="flex items-center gap-2 cursor-pointer text-gray-700">
                                 <input
                                   type="checkbox"
+                                  className="admin-checkbox"
                                   checked={isActive}
                                   aria-label={`Set influencer ${row.name || ''} status to ${isActive ? 'inactive' : 'active'}`}
                                   disabled={!canManageAdminData || updateInfluencerStatusMutation.isPending}
@@ -1644,7 +1546,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">Partners</h2>
+                <h2 className="admin-section-title">Partners</h2>
                 <p className="text-sm text-gray-500">
                   Partners have super admin–level access. Account credentials are never shown here.
                 </p>
@@ -1652,7 +1554,7 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 disabled={!canManageAdminData}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                className="admin-btn-primary disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 onClick={() => {
                   if (!canManageAdminData) {
                     notifyError('Only admin can add partners.');
@@ -1682,7 +1584,7 @@ export default function AdminDashboard() {
                 <select
                   value={partnersStatusFilter}
                   onChange={(e) => setPartnersStatusFilter(e.target.value)}
-                  className="w-full sm:w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 bg-white"
+                  className="theme-input w-full sm:w-40 !py-2"
                 >
                   <option value="all">All</option>
                   <option value="active">Active</option>
@@ -1711,13 +1613,13 @@ export default function AdminDashboard() {
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 text-gray-700">
                       <tr>
-                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">S No</th>
-                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Name</th>
-                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Email</th>
-                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Mobile</th>
-                        <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Status</th>
+                        <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">S No</th>
+                        <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Name</th>
+                        <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Email</th>
+                        <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Mobile</th>
+                        <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Status</th>
                         {canManageAdminData && (
-                          <th className="px-5 py-3 text-left font-semibold whitespace-nowrap">Actions</th>
+                          <th className="whitespace-nowrap font-label text-xs font-bold uppercase tracking-wide text-gray-700">Actions</th>
                         )}
                       </tr>
                     </thead>
@@ -1728,7 +1630,7 @@ export default function AdminDashboard() {
                           idx +
                           1;
                         return (
-                          <tr key={String(row.id)} className="border-b border-gray-100 hover:bg-gray-50">
+                          <tr key={String(row.id)} className="border-b border-gray-100 hover:bg-white/40">
                             <td className="px-5 py-4 whitespace-nowrap">{globalIndex}</td>
                             <td className="px-5 py-4 font-medium text-gray-800">{row.name}</td>
                             <td className="px-5 py-4 text-gray-700">{row.email}</td>
@@ -1791,7 +1693,7 @@ export default function AdminDashboard() {
                         type="button"
                         disabled={partnersPage <= 1 || partnersListLoading}
                         onClick={() => setPartnersPage((p) => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm disabled:opacity-50"
+                        className="theme-btn-ghost border border-orange-200/70 !text-sm disabled:opacity-50"
                       >
                         Previous
                       </button>
@@ -1803,7 +1705,7 @@ export default function AdminDashboard() {
                         onClick={() =>
                           setPartnersPage((p) => Math.min(partnersListMeta.totalPages, p + 1))
                         }
-                        className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm disabled:opacity-50"
+                        className="theme-btn-ghost border border-orange-200/70 !text-sm disabled:opacity-50"
                       >
                         Next
                       </button>
@@ -1816,7 +1718,7 @@ export default function AdminDashboard() {
             {showAddPartner && (
               <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Add Partner</h3>
+                  <h3 className="admin-section-title mb-4">Add Partner</h3>
                   <p className="text-sm text-gray-500 mb-4">
                     Creates a partner account with elevated access. The user receives credentials through your
                     secure provisioning flow (not in this app).
@@ -1866,7 +1768,7 @@ export default function AdminDashboard() {
                         setPartnerForm(INITIAL_PARTNER_FORM);
                         setPartnerFormErrors({});
                       }}
-                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      className="theme-btn-secondary"
                     >
                       Cancel
                     </button>
@@ -1874,7 +1776,7 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={handleCreatePartner}
                       disabled={createPartnerMutation.isPending}
-                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                      className="admin-btn-primary disabled:opacity-50"
                     >
                       {createPartnerMutation.isPending ? 'Saving…' : 'Create'}
                     </button>
@@ -1886,7 +1788,7 @@ export default function AdminDashboard() {
             {resetPasswordTarget && (
               <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-1">Reset password</h3>
+                  <h3 className="admin-section-title mb-1">Reset password</h3>
                   <p className="text-sm text-gray-500 mb-4">
                     New password for <span className="font-medium text-gray-800">{resetPasswordTarget.name}</span>.{' '}
                     {PASSWORD_REQUIREMENTS_SUMMARY}
@@ -1913,7 +1815,7 @@ export default function AdminDashboard() {
                         setResetPasswordValue('');
                         setResetPasswordError('');
                       }}
-                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      className="theme-btn-secondary"
                     >
                       Cancel
                     </button>
@@ -1921,7 +1823,7 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={handleSubmitResetPartnerPassword}
                       disabled={resetPartnerPasswordMutation.isPending}
-                      className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                      className="admin-btn-primary disabled:opacity-50"
                     >
                       {resetPartnerPasswordMutation.isPending ? 'Saving…' : 'Update password'}
                     </button>
